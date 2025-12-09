@@ -17,6 +17,19 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import retrofit2.Call
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.io.File
+import android.content.ContentValues
+import android.os.Build
+import android.provider.MediaStore
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
     private lateinit var previewView: PreviewView
@@ -137,14 +150,55 @@ class MainActivity : AppCompatActivity() {
     private fun takePhoto() {
         val imageCapture = imageCapture ?: return
 
-        Toast.makeText(
-            this,
-            "Photo captured! QR: $lastQrData",
-            Toast.LENGTH_LONG
-        ).show()
+        // Create timestamped filename
+        val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US)
+            .format(System.currentTimeMillis())
 
-        // TODO: Save image and process it based on QR data
-        // This is where you'll add image orientation and cropping logic
+        // Create metadata with QR code info
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/BottleRocket")
+            }
+            // Store QR data in description
+            put(MediaStore.Images.Media.DESCRIPTION, "QR: $lastQrData")
+        }
+
+        // Create output options
+        val outputOptions = ImageCapture.OutputFileOptions
+            .Builder(
+                contentResolver,
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                contentValues
+            )
+            .build()
+
+        // Capture image
+        imageCapture.takePicture(
+            outputOptions,
+            ContextCompat.getMainExecutor(this),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onError(exc: ImageCaptureException) {
+                    Toast.makeText(
+                        baseContext,
+                        "Photo capture failed: ${exc.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    val savedUri = output.savedUri
+                    val msg = "Photo saved: $savedUri\nQR: $lastQrData"
+                    Toast.makeText(baseContext, msg, Toast.LENGTH_LONG).show()
+
+                    // Upload to backend
+                    if (savedUri != null) {
+                        uploadToBackend(savedUri, lastQrData)
+                    }
+                }
+            }
+        )
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
@@ -173,7 +227,72 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
+        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
+    }
+
+    private fun uploadToBackend(imageUri: android.net.Uri, qrData: String?) {
+        // Get file from URI
+        val inputStream = contentResolver.openInputStream(imageUri)
+        val file = File(cacheDir, "temp_image.jpg")
+        inputStream?.use { input ->
+            file.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+
+        // Create multipart body
+        val requestFile = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
+        val body = MultipartBody.Part.createFormData("image", file.name, requestFile)
+        val qrDataBody = (qrData ?: "").toRequestBody("text/plain".toMediaTypeOrNull())
+        val timestampBody = System.currentTimeMillis().toString()
+            .toRequestBody("text/plain".toMediaTypeOrNull())
+
+        // Create Retrofit instance
+        val retrofit = Retrofit.Builder()
+            .baseUrl("https://your-backend-url.com") // CHANGE THIS
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        val apiService = retrofit.create(ApiService::class.java)
+
+        // Upload
+        apiService.uploadImage(body, qrDataBody, timestampBody).enqueue(
+            object : retrofit2.Callback<UploadResponse> {
+                override fun onResponse(
+                    call: Call<UploadResponse>,
+                    response: retrofit2.Response<UploadResponse>
+                ) {
+                    if (response.isSuccessful) {
+                        runOnUiThread {
+                            Toast.makeText(
+                                baseContext,
+                                "Uploaded successfully!",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } else {
+                        runOnUiThread {
+                            Toast.makeText(
+                                baseContext,
+                                "Upload failed: ${response.code()}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                }
+
+                override fun onFailure(call: Call<UploadResponse>, t: Throwable) {
+                    runOnUiThread {
+                        Toast.makeText(
+                            baseContext,
+                            "Upload error: ${t.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+        )
     }
 }
