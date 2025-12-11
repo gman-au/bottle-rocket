@@ -1,0 +1,25 @@
+package au.com.gman.bottlerocket.injection
+import au.com.gman.bottlerocket.imaging.DummyTemplateMapper
+import au.com.gman.bottlerocket.imaging.ImageProcessor
+import au.com.gman.bottlerocket.interfaces.IImageProcessor
+import au.com.gman.bottlerocket.interfaces.ITemplateMapper
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class ImagingModule {
+
+    @Binds
+    abstract fun bindImageProcessor(
+        imageProcessor: ImageProcessor
+    ) : IImageProcessor
+
+    @Binds
+    abstract fun bindTemplateMapper(
+        templateMapper: DummyTemplateMapper
+    ) : ITemplateMapper
+
+}

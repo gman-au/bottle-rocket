@@ -10,10 +10,14 @@ import android.graphics.Rect
 import android.util.Log
 import au.com.gman.bottlerocket.domain.QRTemplateInfo
 import au.com.gman.bottlerocket.interfaces.IImageProcessor
+import au.com.gman.bottlerocket.interfaces.ITemplateMapper
+import javax.inject.Inject
 import kotlin.math.max
 import kotlin.math.min
 
-class ImageProcessor : IImageProcessor {
+class ImageProcessor @Inject constructor(
+    private val templateMapper: ITemplateMapper
+): IImageProcessor {
 
     companion object {
         private const val TAG = "ImageProcessor"
@@ -61,7 +65,7 @@ class ImageProcessor : IImageProcessor {
     /**
      * Process image with QR bounding box for cropping and perspective correction
      */
-    fun processImageWithQR(
+    override fun processImageWithQR(
         bitmap: Bitmap,
         qrData: String,
         qrBoundingBox: Rect?

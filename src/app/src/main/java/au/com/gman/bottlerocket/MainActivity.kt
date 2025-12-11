@@ -13,26 +13,34 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.*
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import au.com.gman.bottlerocket.interfaces.IImageProcessor
 import au.com.gman.bottlerocket.network.ApiService
-import au.com.gman.bottlerocket.imaging.ImageProcessor
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import dagger.hilt.android.AndroidEntryPoint
-import dagger.hilt.android.HiltAndroidApp
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+
+    @Inject
+    lateinit var imageProcessor: IImageProcessor
     private lateinit var previewView: PreviewView
     private lateinit var statusText: TextView
     private lateinit var captureButton: Button
@@ -44,7 +52,6 @@ class MainActivity : AppCompatActivity() {
     private var lastQrBoundingBox: Rect? = null
 
     // Services
-    private val imageProcessor = ImageProcessor()
     private val apiService = ApiService("https://your-backend-url.com")
 
     override fun onCreate(savedInstanceState: Bundle?) {
