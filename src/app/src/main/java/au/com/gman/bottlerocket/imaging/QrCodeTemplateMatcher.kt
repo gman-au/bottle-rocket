@@ -1,5 +1,6 @@
 package au.com.gman.bottlerocket.imaging
 
+import android.graphics.Rect
 import au.com.gman.bottlerocket.domain.QRTemplateInfo
 import au.com.gman.bottlerocket.domain.TemplateMatchResponse
 import au.com.gman.bottlerocket.interfaces.IQrCodeTemplateMatcher
@@ -12,11 +13,12 @@ class QrCodeTemplateMatcher @Inject constructor(): IQrCodeTemplateMatcher {
             position = "1",
             version = "1",
             type = "1",
-            sequence = "1"
+            sequence = "1",
+            boundingBox = Rect(0, 0, 300, 300)
         )
     )
 
-    override fun tryMatch(qrCode: String?): TemplateMatchResponse {        
+    override fun tryMatch(qrCode: String?): TemplateMatchResponse {
         return if (qrCode in templatesMap) {
             TemplateMatchResponse(matchFound = true, qrCode, template = templatesMap[qrCode]!!)
         } else {

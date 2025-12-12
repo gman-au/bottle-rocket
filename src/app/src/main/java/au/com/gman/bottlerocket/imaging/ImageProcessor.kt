@@ -32,7 +32,7 @@ class ImageProcessor @Inject constructor(
         val type = typeMatch?.value ?: "UNKNOWN"
         val sequence = parts.substringAfter("S", "000")
 
-        return QRTemplateInfo(position, version, type, sequence)
+        return QRTemplateInfo(position, version, type, sequence, Rect(0, 0, 0, 0))
     }
 
     override fun enhanceImage(bitmap: Bitmap): Bitmap {

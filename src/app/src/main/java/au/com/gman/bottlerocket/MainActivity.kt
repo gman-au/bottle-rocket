@@ -17,7 +17,6 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -28,9 +27,6 @@ import au.com.gman.bottlerocket.imaging.QrCodeDetector
 import au.com.gman.bottlerocket.interfaces.IImageProcessor
 import au.com.gman.bottlerocket.interfaces.ITemplateListener
 import au.com.gman.bottlerocket.network.ApiService
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.common.InputImage
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.text.SimpleDateFormat
@@ -49,12 +45,14 @@ class MainActivity : AppCompatActivity() {
     lateinit var qrCodeDetector: QrCodeDetector
 
     private lateinit var previewView: PreviewView
+
+    private lateinit var overlayView: PageCaptureOverlayView
     private lateinit var statusText: TextView
     private lateinit var captureButton: Button
     private lateinit var cameraExecutor: ExecutorService
 
     private var imageCapture: ImageCapture? = null
-    private var qrCodeDetected = false
+    private var matchFound = false
     private var lastQrData: String? = null
     private var lastQrBoundingBox: Rect? = null
 
@@ -66,6 +64,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         previewView = findViewById(R.id.previewView)
+        overlayView = findViewById(R.id.overlayView)
         statusText = findViewById(R.id.statusText)
         captureButton = findViewById(R.id.captureButton)
 
@@ -76,23 +75,25 @@ class MainActivity : AppCompatActivity() {
         }
 
         qrCodeDetector.setListener(object : ITemplateListener {
-            override fun onDetectionSuccess(matchedTemplate: TemplateMatchResponse) {
+            override fun onDetectionSuccess(qrPageTemplate: TemplateMatchResponse) {
                 runOnUiThread {
-                    qrCodeDetected = matchedTemplate.matchFound
-                    captureButton.isEnabled = qrCodeDetected
+                    matchFound = qrPageTemplate.matchFound
+                    captureButton.isEnabled = matchFound
 
                     // set bounding box
-                    lastQrBoundingBox = null
+                    lastQrBoundingBox = qrPageTemplate.template?.boundingBox
 
-                    statusText.text = when (qrCodeDetected) {
+                    statusText.text = when (matchFound) {
                         true -> "Found something"
-                        false -> matchedTemplate.qrCode ?: "No code found"
+                        false -> qrPageTemplate.qrCode ?: "No code found"
                     }
                     statusText.setBackgroundColor(
-                        when (qrCodeDetected) {
+                        when (matchFound) {
                             true -> 0x8000FF00.toInt()
                             false -> 0x80FFA500.toInt()
                         })
+
+                    overlayView.setPageBoundingBox(lastQrBoundingBox)
                 }
             }
 
@@ -128,7 +129,6 @@ class MainActivity : AppCompatActivity() {
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also {
-//                    it.setAnalyzer(cameraExecutor, QRCodeAnalyzer())
                     it.setAnalyzer(cameraExecutor, qrCodeDetector)
                 }
 
@@ -144,63 +144,6 @@ class MainActivity : AppCompatActivity() {
             }
 
         }, ContextCompat.getMainExecutor(this))
-    }
-
-    private inner class QRCodeAnalyzer : ImageAnalysis.Analyzer {
-        private val scanner = BarcodeScanning.getClient()
-
-        @androidx.camera.core.ExperimentalGetImage
-        override fun analyze(imageProxy: ImageProxy) {
-            val mediaImage = imageProxy.image
-            if (mediaImage != null) {
-                val image = InputImage.fromMediaImage(
-                    mediaImage,
-                    imageProxy.imageInfo.rotationDegrees
-                )
-
-                scanner.process(image)
-                    .addOnSuccessListener { barcodes ->
-                        handleBarcodes(barcodes)
-                    }
-                    .addOnCompleteListener {
-                        imageProxy.close()
-                    }
-            } else {
-                imageProxy.close()
-            }
-        }
-
-        private fun handleBarcodes(barcodes: List<Barcode>) {
-            if (barcodes.isNotEmpty()) {
-                val qrCode = barcodes.first()
-                qrCodeDetected = true
-                lastQrData = qrCode.rawValue
-                lastQrBoundingBox = qrCode.boundingBox
-
-                val templateInfo = imageProcessor.parseQRCode(qrCode.rawValue ?: "")
-
-                // Special handling for 04o template
-                val displayText = if (qrCode.rawValue?.contains("04o", ignoreCase = true) == true) {
-                    "QR: 04o template (500x500 crop)"
-                } else {
-                    "QR: ${templateInfo.position} - ${templateInfo.type}"
-                }
-
-                runOnUiThread {
-                    statusText.text = displayText
-                    statusText.setBackgroundColor(0x8000FF00.toInt())
-                    captureButton.isEnabled = true
-                }
-            } else {
-                qrCodeDetected = false
-                lastQrBoundingBox = null
-                runOnUiThread {
-                    statusText.text = "Position QR code in frame"
-                    statusText.setBackgroundColor(0x80FFA500.toInt())
-                    captureButton.isEnabled = false
-                }
-            }
-        }
     }
 
     private fun takePhoto() {
