@@ -1,6 +1,8 @@
 package au.com.gman.bottlerocket.injection
+import au.com.gman.bottlerocket.imaging.PageTemplateRescaler
 import au.com.gman.bottlerocket.imaging.QrCodeDetector
 import au.com.gman.bottlerocket.imaging.QrCodeTemplateMatcher
+import au.com.gman.bottlerocket.interfaces.IPageTemplateRescaler
 import au.com.gman.bottlerocket.interfaces.IQrCodeDetector
 import au.com.gman.bottlerocket.interfaces.IQrCodeTemplateMatcher
 import dagger.Binds
@@ -21,5 +23,10 @@ abstract class ImagingModule {
     abstract fun bindQrCodeDetector(
         qrCodeDetector: QrCodeDetector
     ) : IQrCodeDetector
+
+    @Binds
+    abstract fun bindTemplateRescaler(
+        pageTemplateRescaler: PageTemplateRescaler
+    ) : IPageTemplateRescaler
 
 }

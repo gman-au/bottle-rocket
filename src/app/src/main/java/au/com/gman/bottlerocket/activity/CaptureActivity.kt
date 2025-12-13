@@ -46,6 +46,8 @@ class CaptureActivity : AppCompatActivity() {
 
     private lateinit var overlayView: PageCaptureOverlayView
     private lateinit var statusText: TextView
+
+    private lateinit var debugText: TextView
     private lateinit var captureButton: Button
 
     private lateinit var cancelButton: Button
@@ -66,6 +68,7 @@ class CaptureActivity : AppCompatActivity() {
         previewView = findViewById(R.id.previewView)
         overlayView = findViewById(R.id.overlayView)
         statusText = findViewById(R.id.statusText)
+        debugText = findViewById(R.id.debugText)
         captureButton = findViewById(R.id.captureButton)
         cancelButton = findViewById(R.id.cancelButton)
 
@@ -83,15 +86,8 @@ class CaptureActivity : AppCompatActivity() {
             override fun onDetectionSuccess(matchedTemplate: TemplateMatchResponse) {
                 runOnUiThread {
 
-                    overlayView.post {
-                        Log.d("OVERLAY", "Preview size: ${overlayView.width} x ${overlayView.height}")
-                    }
-
                     matchFound = matchedTemplate.matchFound
                     captureButton.isEnabled = matchFound
-
-                    // set bounding box
-                    lastPageOverlayPath = matchedTemplate.overlay
 
                     statusText.text = when (matchFound) {
                         true -> matchedTemplate.qrCode
@@ -103,7 +99,8 @@ class CaptureActivity : AppCompatActivity() {
                             false -> 0x80FFA500.toInt()
                         })
 
-                    overlayView.setOverlayPath(lastPageOverlayPath)
+                    overlayView.setPageOverlayPath(matchedTemplate.pageOverlayPath)
+                    overlayView.setQrOverlayPath(matchedTemplate.qrCodeOverlayPath)
                 }
             }
 

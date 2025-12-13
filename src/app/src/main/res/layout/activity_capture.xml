@@ -23,11 +23,22 @@
     />
 
     <TextView
+        android:id="@+id/debugText"
+        android:gravity="end"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:theme="@style/Theme.BottleRocket.TextDebug"
+        android:layout_marginVertical="32dp"
+        android:layout_marginEnd="32dp"
+        app:layout_constraintTop_toTopOf="parent"
+        />
+
+    <TextView
         android:id="@+id/statusText"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:padding="16dp"
-        android:text="Position QR code in frame"
+        android:text="@string/prompt_position_qr_code"
         android:textAlignment="center"
         android:background="#80000000"
         android:textColor="#FFFFFF"
@@ -40,7 +51,7 @@
         android:id="@+id/cancelButton"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Go back"
+        android:text="@string/option_go_back"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="8dp"
         android:layout_marginVertical="16dp"
@@ -56,7 +67,7 @@
         android:id="@+id/captureButton"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Capture"
+        android:text="@string/option_capture"
         android:layout_marginStart="8dp"
         android:layout_marginEnd="16dp"
         android:layout_marginVertical="16dp"

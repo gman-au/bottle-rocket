@@ -6,5 +6,6 @@ data class TemplateMatchResponse (
     val matchFound: Boolean,
     val qrCode: String?,
     val pageTemplate: PageTemplate?,
-    val overlay: Path?
+    val pageOverlayPath: Path?,
+    val qrCodeOverlayPath: Path?
 )

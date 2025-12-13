@@ -1,21 +1,22 @@
 package au.com.gman.bottlerocket.imaging
 
-import android.graphics.Matrix
 import android.graphics.Path
 import android.graphics.Point
-import android.graphics.RectF
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
 import au.com.gman.bottlerocket.domain.TemplateMatchResponse
+import au.com.gman.bottlerocket.interfaces.IPageTemplateRescaler
 import au.com.gman.bottlerocket.interfaces.IQrCodeDetector
+import au.com.gman.bottlerocket.interfaces.IQrCodeTemplateMatcher
 import au.com.gman.bottlerocket.interfaces.ITemplateListener
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import javax.inject.Inject
-import kotlin.math.atan2
+import kotlin.math.sqrt
 
 class QrCodeDetector @Inject constructor(
-    private val qrCodeMatcher: QrCodeTemplateMatcher
+    private val qrCodeTemplateMatcher: IQrCodeTemplateMatcher,
+    private val pageTemplateRescaler: IPageTemplateRescaler
 ): IQrCodeDetector {
 
     private val scanner = BarcodeScanning.getClient()
@@ -48,35 +49,44 @@ class QrCodeDetector @Inject constructor(
 
             scanner.process(image)
                 .addOnSuccessListener { barcodes ->
-                    val qrCode = barcodes.firstOrNull()
-                    var matchedTemplate = qrCodeMatcher.tryMatch(qrCode?.rawValue ?: "")
+                    val barcode = barcodes.firstOrNull()
+                    val qrCode = barcode?.rawValue
+                    var matchFound = false
+                    var pageOverlayPath: Path? = null
+                    var qrOverlayPath: Path? = null
 
+                    val pageTemplate = qrCodeTemplateMatcher.tryMatch(barcode?.rawValue ?: "")
 
-                    if (qrCode != null && qrCode.boundingBox != null) {
-                        val cornerPoints = qrCode.cornerPoints
-                        val templateBoundingBox = matchedTemplate.pageTemplate?.pageDimensions
+                    if (barcode != null && barcode.boundingBox != null) {
+                        val cornerPoints = toPointArray(barcode.cornerPoints)
+                        qrOverlayPath = pointsToPath(cornerPoints)
 
-                        if (templateBoundingBox != null && cornerPoints != null) {
-                            // Calculate page overlay path based on QR position and template
-                            val overlayPath = calculatePageOverlay(
-                                cornerPoints,
-                                templateBoundingBox,
-                                imageWidth,
-                                imageHeight,
-                                previewWidth,
-                                previewHeight
-                            )
-
-                            matchedTemplate = TemplateMatchResponse(
-                                matchFound = matchedTemplate.matchFound,
-                                qrCode = matchedTemplate.qrCode + rotationDegrees,
-                                overlay = overlayPath,
-                                pageTemplate = matchedTemplate.pageTemplate
-                            )
+                        if (pageTemplate != null) {
+                            matchFound = true
+                            if (qrOverlayPath != null) {
+                                // Calculate page overlay path based on QR position and template
+                                val rescaledPageOverlayPath = pageTemplateRescaler.rescalePageOverlay(
+                                    qrCorners = cornerPoints,
+                                    pageTemplateBoundingBox = pageTemplate.pageDimensions,
+                                    imageWidth = imageWidth.toFloat(),
+                                    imageHeight = imageHeight.toFloat(),
+                                    previewWidth = previewWidth.toFloat(),
+                                    previewHeight = previewHeight.toFloat()
+                                )
+                                pageOverlayPath = rescaledPageOverlayPath
+                            }
                         }
                     }
 
-                    listener?.onDetectionSuccess(matchedTemplate)
+                    val result = TemplateMatchResponse(
+                        matchFound = matchFound,
+                        qrCode = qrCode,
+                        pageTemplate = pageTemplate,
+                        pageOverlayPath = pageOverlayPath,
+                        qrCodeOverlayPath = qrOverlayPath
+                    )
+
+                    listener?.onDetectionSuccess(result)
                 }
                 .addOnCompleteListener {
                     imageProxy.close()
@@ -86,90 +96,22 @@ class QrCodeDetector @Inject constructor(
         }
     }
 
-    /**
-     * Calculate the rotation angle of the QR code from its corner points
-     * Returns angle in degrees
-     */
-    private fun calculateQRRotationAngle(corners: Array<Point>): Float {
-        if (corners.size < 2) return 0f
-
-        // Use top edge (corner 0 to corner 1) to determine rotation
-        val topLeft = corners[0]
-        val topRight = corners[1]
-
-        val deltaX = (topRight.x - topLeft.x).toFloat()
-        val deltaY = (topRight.y - topLeft.y).toFloat()
-
-        // Calculate angle in radians, then convert to degrees
-        val angleRadians = atan2(deltaY, deltaX)
-        val angleDegrees = Math.toDegrees(angleRadians.toDouble()).toFloat()
-
-        return angleDegrees
+    private fun toPointArray(points: Array<out Point>?): Array<Point> {
+        return points?.toList()?.toTypedArray() ?: arrayOf()
     }
 
-    private fun calculatePageOverlay(
-        qrCorners: Array<android.graphics.Point>,
-        pageBoundingBox: RectF,
-        imageWidth: Int,
-        imageHeight: Int,
-        previewWidth: Int,   // Add this parameter
-        previewHeight: Int   // Add this parameter
-    ): Path {
+    private fun pointsToPath(qrCorners: Array<out Point?>?) : Path? {
         val path = Path()
 
-        if (qrCorners.size < 4) return path
+        qrCorners?.size?.let { if (it < 4) return null }
 
-        // Calculate scale factors from image space to preview space
-        val scaleX = previewWidth.toFloat() / imageWidth
-        val scaleY = previewHeight.toFloat() / imageHeight
-
-        android.util.Log.d("OVERLAY", "Scale: ${scaleX}x, ${scaleY}y")
-
-        val qrRotationDegrees = calculateQRRotationAngle(qrCorners)
-        android.util.Log.d("OVERLAY", "Rotation: $qrRotationDegrees°")
-
-        val anchorPoint = qrCorners[3]
-        android.util.Log.d("OVERLAY", "Anchor (image space): (${anchorPoint.x}, ${anchorPoint.y})")
-
-        // Scale page dimensions to match preview
-        val pageCorners = floatArrayOf(
-            pageBoundingBox.left * scaleX, pageBoundingBox.top * scaleY,
-            pageBoundingBox.right * scaleX, pageBoundingBox.top * scaleY,
-            pageBoundingBox.right * scaleX, pageBoundingBox.bottom * scaleY,
-            pageBoundingBox.left * scaleX, pageBoundingBox.bottom * scaleY
-        )
-
-        val matrix = Matrix()
-        matrix.setRotate(qrRotationDegrees)
-        matrix.mapPoints(pageCorners)
-
-        // Scale anchor point to preview space
-        val scaledAnchorX = anchorPoint.x * scaleX
-        val scaledAnchorY = anchorPoint.y * scaleY
-
-        for (i in pageCorners.indices step 2) {
-            pageCorners[i] += scaledAnchorX
-            pageCorners[i + 1] += scaledAnchorY
-        }
-
-        android.util.Log.d("OVERLAY", "Final page corners (preview space):")
-        for (i in pageCorners.indices step 2) {
-            android.util.Log.d("OVERLAY", "  (${pageCorners[i]}, ${pageCorners[i+1]})")
-        }
-
-        path.moveTo(pageCorners[0], pageCorners[1])
-        path.lineTo(pageCorners[2], pageCorners[3])
-        path.lineTo(pageCorners[4], pageCorners[5])
-        path.lineTo(pageCorners[6], pageCorners[7])
+        path.moveTo(qrCorners?.get(0)?.x?.toFloat() ?: 0F, qrCorners?.get(0)?.y?.toFloat() ?: 0F)
+        path.lineTo(qrCorners?.get(1)?.x?.toFloat() ?: 0F, qrCorners?.get(1)?.y?.toFloat() ?: 0F)
+        path.lineTo(qrCorners?.get(2)?.x?.toFloat() ?: 0F, qrCorners?.get(2)?.y?.toFloat() ?: 0F)
+        path.lineTo(qrCorners?.get(3)?.x?.toFloat() ?: 0F, qrCorners?.get(3)?.y?.toFloat() ?: 0F)
         path.close()
 
         return path
-    }
-
-    private fun calculateDistance(p1: android.graphics.Point, p2: android.graphics.Point): Float {
-        val dx = (p2.x - p1.x).toFloat()
-        val dy = (p2.y - p1.y).toFloat()
-        return kotlin.math.sqrt(dx * dx + dy * dy)
     }
 
 }

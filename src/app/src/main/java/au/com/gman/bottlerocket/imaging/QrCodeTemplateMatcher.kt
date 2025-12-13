@@ -20,11 +20,11 @@ class QrCodeTemplateMatcher @Inject constructor(): IQrCodeTemplateMatcher {
         )
     )
 
-    override fun tryMatch(qrCode: String?): TemplateMatchResponse {
+    override fun tryMatch(qrCode: String?): PageTemplate? {
         return if (qrCode in templatesMap) {
-            TemplateMatchResponse(matchFound = true, qrCode, overlay = null, pageTemplate = templatesMap[qrCode]!!)
+            templatesMap[qrCode]!!
         } else {
-            TemplateMatchResponse(matchFound = false, qrCode, overlay = null, pageTemplate = null)
+            null
         }
     }
 }
