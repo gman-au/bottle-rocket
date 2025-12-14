@@ -2,6 +2,7 @@ package au.com.gman.bottlerocket.qrCode
 
 import android.graphics.PointF
 import android.util.Log
+import au.com.gman.bottlerocket.BottleRocketApplication
 import au.com.gman.bottlerocket.domain.BarcodeDetectionResult
 import au.com.gman.bottlerocket.domain.RocketBoundingBox
 import au.com.gman.bottlerocket.domain.applyRotation
@@ -39,6 +40,15 @@ class QrCodeHandler @Inject constructor(
             val previewSize = screenDimensions.getPreviewSize()
             val rotationDegrees = screenDimensions.getScreenRotation()
 
+            Log.d(
+                BottleRocketApplication.AppConstants.APPLICATION_LOG_TAG,
+                buildString {
+                    appendLine("imageSize: ${imageSize?.x} x ${imageSize?.y}")
+                    appendLine("previewSize: ${previewSize?.x} x ${previewSize?.y}")
+                    appendLine("rotationDegrees: $rotationDegrees")
+                }
+            )
+
             // the first scale factor is the viewport vs the preview
             val scalingFactorViewport =
                 pageTemplateRescaler
@@ -50,9 +60,23 @@ class QrCodeHandler @Inject constructor(
                         rotationAngle = rotationDegrees!!
                     )
 
+            Log.d(
+                BottleRocketApplication.AppConstants.APPLICATION_LOG_TAG,
+                buildString {
+                    appendLine("scalingFactorViewport: $scalingFactorViewport")
+                }
+            )
+
             // the second scale factor is the comparative QR code vs the actual
             // we need to 'straighten up' the QR code box
             val rotationAngle = qrBoundingBox.calculateRotationAngle();
+
+            Log.d(
+                BottleRocketApplication.AppConstants.APPLICATION_LOG_TAG,
+                buildString {
+                    appendLine("rotationAngle: $rotationAngle")
+                }
+            )
 
             val straightQrBox =
                 qrBoundingBox
@@ -72,9 +96,23 @@ class QrCodeHandler @Inject constructor(
                         rotationAngle = 0
                     )
 
+            Log.d(
+                BottleRocketApplication.AppConstants.APPLICATION_LOG_TAG,
+                buildString {
+                    appendLine("scalingFactorQrCode: $scalingFactorQrCode")
+                }
+            )
+
             val scalingFactor = PointF(
-                scalingFactorQrCode.x * 1,//scalingFactorViewport.x,
-                scalingFactorQrCode.y * 1,//scalingFactorViewport.y
+                scalingFactorViewport.x * 1,//,scalingFactorQrCode.x,
+                scalingFactorViewport.y * 1//scalingFactorQrCode.y
+            )
+
+            Log.d(
+                BottleRocketApplication.AppConstants.APPLICATION_LOG_TAG,
+                buildString {
+                    appendLine("final scalingFactor: $scalingFactor")
+                }
             )
 
             if (pageTemplate != null) {
@@ -92,7 +130,22 @@ class QrCodeHandler @Inject constructor(
                 )
 
                 val scaledBoundingBox = pageTemplateBoundingBox.scale(scalingFactor.x, scalingFactor.y)
-                qrBoundingBox = qrBoundingBox.scale(scalingFactor.x, scalingFactor.y)
+
+                // scaling factor must be inaccurate
+                qrBoundingBox =
+                    qrBoundingBox
+                        .scale(
+                            scalingFactor.x,
+                            scalingFactor.y
+                        )
+
+                Log.d(
+                    BottleRocketApplication.AppConstants.APPLICATION_LOG_TAG,
+                    buildString {
+                        appendLine("final qrBoundingBox:")
+                        appendLine("$qrBoundingBox")
+                    }
+                )
 
                 pageBoundingBox =
                     scaledBoundingBox
@@ -107,7 +160,7 @@ class QrCodeHandler @Inject constructor(
             matchFound = matchFound,
             qrCode = qrCode,
             pageTemplate = pageTemplate,
-            pageOverlayPath = pageBoundingBox,
+            pageOverlayPath = null, // pageBoundingBox,
             qrCodeOverlayPath = qrBoundingBox
         )
     }

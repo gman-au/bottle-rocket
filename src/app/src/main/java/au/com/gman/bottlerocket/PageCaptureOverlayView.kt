@@ -8,15 +8,28 @@ import au.com.gman.bottlerocket.domain.RocketBoundingBox
 import au.com.gman.bottlerocket.domain.toPath
 
 class PageCaptureOverlayView(context: Context, attrs: AttributeSet? = null) : View(context, attrs) {
-    private val paint = Paint().apply {
-        color = context.getColor(R.color.debug_text)
-        style = Paint.Style.STROKE
-        strokeWidth = 6f
-    }
+    private val paintRed =
+        Paint()
+            .apply {
+                color = context.getColor(R.color.debug_text)
+                style = Paint.Style.STROKE
+                strokeWidth = 6f
+            }
+
+    private val paintBlue =
+            Paint()
+                .apply {
+                    color = context.getColor(R.color.blue)
+                    style = Paint.Style.STROKE
+                    strokeWidth = 6f
+                }
+
     private var pageBoundingBox: RocketBoundingBox? = null
     private var qrCodeBoundingBox: RocketBoundingBox? = null
 
-    private var referenceBox: RocketBoundingBox? = null
+    private var imageReferenceBox: RocketBoundingBox? = null
+
+    private var previewReferenceBox: RocketBoundingBox? = null
 
     fun setPageOverlayBox(box: RocketBoundingBox?) {
         pageBoundingBox = box
@@ -30,16 +43,23 @@ class PageCaptureOverlayView(context: Context, attrs: AttributeSet? = null) : Vi
         //postInvalidate()
     }
 
-    fun setReferencePath(box: RocketBoundingBox?) {
-        referenceBox = box
+    fun setImageReferenceBox(box: RocketBoundingBox?) {
+        imageReferenceBox = box
+        // Invalidate the view to trigger a redraw
+        //postInvalidate()
+    }
+
+    fun setPreviewReferenceBox(box: RocketBoundingBox?) {
+        previewReferenceBox = box
         // Invalidate the view to trigger a redraw
         //postInvalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        pageBoundingBox?.let { canvas.drawPath(it.toPath(), paint) }
-        qrCodeBoundingBox?.let { canvas.drawPath(it.toPath(), paint) }
-        referenceBox?.let { canvas.drawPath(it.toPath(), paint) }
+        pageBoundingBox?.let { canvas.drawPath(it.toPath(), paintRed) }
+        qrCodeBoundingBox?.let { canvas.drawPath(it.toPath(), paintRed) }
+        imageReferenceBox?.let { canvas.drawPath(it.toPath(), paintBlue) }
+        previewReferenceBox?.let { canvas.drawPath(it.toPath(), paintBlue) }
     }
 }

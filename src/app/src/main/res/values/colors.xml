@@ -2,6 +2,9 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="blue">#FF0000FF</color>
+    <color name="purple">#FFFF00FF</color>
+    <color name="transparent">#00000000</color>
 
     <color name="bottle_rocket_dark">#FF093624</color>
     <color name="bottle_rocket_light">#FF96F7D0</color>

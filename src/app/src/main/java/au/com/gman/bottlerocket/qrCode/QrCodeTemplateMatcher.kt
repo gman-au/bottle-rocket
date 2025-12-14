@@ -26,10 +26,10 @@ class QrCodeTemplateMatcher @Inject constructor(): IQrCodeTemplateMatcher {
             // Page dimensions in QR-relative units
             // If QR is ~50px and page is 500x700px, that's 10x14 QR units
             pageDimensions = RocketBoundingBox(
-                topLeft = PointF(-20f, -700f),    // 21.5 QR-widths left, 28 QR-heights up
-                topRight = PointF(350f, -700f),       // at QR X, 28 QR-heights up
-                bottomRight = PointF(350f, 0f),      // at QR position (bottom-right corner)
-                bottomLeft = PointF(-20f, 0f)    // 21.5 QR-widths left, at QR Y
+                topLeft = PointF(-300f, -100f),    // 21.5 QR-widths left, 28 QR-heights up
+                topRight = PointF(-100f, -100f),       // at QR X, 28 QR-heights up
+                bottomRight = PointF(-100f, -200f),      // at QR position (bottom-right corner)
+                bottomLeft = PointF(-300f, -200f)    // 21.5 QR-widths left, at QR Y
             )
         )
     )

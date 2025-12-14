@@ -8,6 +8,7 @@ import android.graphics.PointF
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -21,6 +22,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import au.com.gman.bottlerocket.BottleRocketApplication
 import au.com.gman.bottlerocket.PageCaptureOverlayView
 import au.com.gman.bottlerocket.R
 import au.com.gman.bottlerocket.domain.RocketBoundingBox
@@ -59,7 +61,9 @@ class CaptureActivity : AppCompatActivity() {
 
     private lateinit var lastMatchedTemplate: BarcodeDetectionResult
 
-    private lateinit var referenceBoundingBox: RocketBoundingBox
+    private lateinit var imageBoundingBox: RocketBoundingBox
+
+    private lateinit var previewBoundingBox: RocketBoundingBox
 
     private var imageCapture: ImageCapture? = null
     private var matchFound = false
@@ -90,11 +94,18 @@ class CaptureActivity : AppCompatActivity() {
             finish()
         }
 
-        referenceBoundingBox = RocketBoundingBox(
-            100F, 100F,
-            300F, 100F,
-            300F, 600F,
-            100F, 600F
+        imageBoundingBox = RocketBoundingBox(
+            0F, 0F,
+            480.0F, 0F,
+            480.0F, 640.0F,
+            0F, 640.0F
+        )
+
+        previewBoundingBox = RocketBoundingBox(
+                0F, 0F,
+            1080.0F, 0F,
+            1080.0F, 2424.0F,
+        0F, 2424.0F
         )
 
         barcodeDetector.setListener(object : ITemplateListener {
@@ -117,7 +128,8 @@ class CaptureActivity : AppCompatActivity() {
                     lastMatchedTemplate = matchedTemplate
                     overlayView.setPageOverlayBox(matchedTemplate.pageOverlayPath)
                     overlayView.setQrOverlayPath(matchedTemplate.qrCodeOverlayPath)
-                    overlayView.setReferencePath(referenceBoundingBox)
+                    overlayView.setImageReferenceBox(imageBoundingBox)
+                    overlayView.setPreviewReferenceBox(previewBoundingBox)
 
                     updateDebugText()
                 }
@@ -178,12 +190,19 @@ class CaptureActivity : AppCompatActivity() {
                     this, cameraSelector, preview, imageCapture, imageAnalyzer
                 )
 
+                Log.d(
+                    BottleRocketApplication.AppConstants.APPLICATION_LOG_TAG,
+                    "aspectRatio: ${previewView.viewPort?.aspectRatio}"
+                )
+
                 overlayView.post {
                     screenDimensions
                         .setPreviewSize(
                             PointF(
-                                overlayView.width.toFloat(),
-                                overlayView.height.toFloat()
+                                overlayView.measuredWidth.toFloat(),
+                                overlayView.measuredHeight.toFloat(),
+                                //overlayView.width.toFloat(),
+                                //overlayView.height.toFloat()
                             )
                         )
                 }
