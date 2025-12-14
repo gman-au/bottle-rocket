@@ -4,11 +4,10 @@ import android.Manifest
 import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.Path
+import android.graphics.PointF
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
-import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -24,8 +23,10 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import au.com.gman.bottlerocket.PageCaptureOverlayView
 import au.com.gman.bottlerocket.R
-import au.com.gman.bottlerocket.domain.TemplateMatchResponse
-import au.com.gman.bottlerocket.imaging.QrCodeDetector
+import au.com.gman.bottlerocket.domain.RocketBoundingBox
+import au.com.gman.bottlerocket.domain.BarcodeDetectionResult
+import au.com.gman.bottlerocket.interfaces.IBarcodeDetector
+import au.com.gman.bottlerocket.interfaces.IScreenDimensions
 import au.com.gman.bottlerocket.interfaces.ITemplateListener
 import au.com.gman.bottlerocket.network.ApiService
 import dagger.hilt.android.AndroidEntryPoint
@@ -40,7 +41,10 @@ import javax.inject.Inject
 class CaptureActivity : AppCompatActivity() {
 
     @Inject
-    lateinit var qrCodeDetector: QrCodeDetector
+    lateinit var barcodeDetector: IBarcodeDetector
+
+    @Inject
+    lateinit var screenDimensions: IScreenDimensions
 
     private lateinit var previewView: PreviewView
 
@@ -53,13 +57,12 @@ class CaptureActivity : AppCompatActivity() {
     private lateinit var cancelButton: Button
     private lateinit var cameraExecutor: ExecutorService
 
-    private lateinit var lastMatchedTemplate: TemplateMatchResponse
+    private lateinit var lastMatchedTemplate: BarcodeDetectionResult
+
+    private lateinit var referenceBoundingBox: RocketBoundingBox
 
     private var imageCapture: ImageCapture? = null
     private var matchFound = false
-    private var lastQrData: String? = null
-    private var lastPageOverlayPath: Path? = null
-
     private var previewWidth: Int = 0
     private var previewHeight: Int = 0
 
@@ -87,8 +90,15 @@ class CaptureActivity : AppCompatActivity() {
             finish()
         }
 
-        qrCodeDetector.setListener(object : ITemplateListener {
-            override fun onDetectionSuccess(matchedTemplate: TemplateMatchResponse) {
+        referenceBoundingBox = RocketBoundingBox(
+            100F, 100F,
+            300F, 100F,
+            300F, 600F,
+            100F, 600F
+        )
+
+        barcodeDetector.setListener(object : ITemplateListener {
+            override fun onDetectionSuccess(matchedTemplate: BarcodeDetectionResult) {
                 runOnUiThread {
 
                     matchFound = matchedTemplate.matchFound
@@ -107,6 +117,7 @@ class CaptureActivity : AppCompatActivity() {
                     lastMatchedTemplate = matchedTemplate
                     overlayView.setPageOverlayBox(matchedTemplate.pageOverlayPath)
                     overlayView.setQrOverlayPath(matchedTemplate.qrCodeOverlayPath)
+                    overlayView.setReferencePath(referenceBoundingBox)
 
                     updateDebugText()
                 }
@@ -156,7 +167,7 @@ class CaptureActivity : AppCompatActivity() {
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also {
-                    it.setAnalyzer(cameraExecutor, qrCodeDetector)
+                    it.setAnalyzer(cameraExecutor, barcodeDetector)
                 }
 
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -168,10 +179,13 @@ class CaptureActivity : AppCompatActivity() {
                 )
 
                 overlayView.post {
-                    previewWidth = overlayView.width
-                    previewHeight = overlayView.height
-                    Log.d(TAG, "Setting preview size: ${previewWidth}x${previewHeight}")
-                    qrCodeDetector.setPreviewSize(previewWidth, previewHeight)
+                    screenDimensions
+                        .setPreviewSize(
+                            PointF(
+                                overlayView.width.toFloat(),
+                                overlayView.height.toFloat()
+                            )
+                        )
                 }
 
             } catch (exc: Exception) {

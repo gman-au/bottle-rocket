@@ -1,6 +1,6 @@
 package au.com.gman.bottlerocket.domain
 
-data class TemplateMatchResponse (
+data class BarcodeDetectionResult (
     val matchFound: Boolean,
     val qrCode: String?,
     val pageTemplate: PageTemplate?,

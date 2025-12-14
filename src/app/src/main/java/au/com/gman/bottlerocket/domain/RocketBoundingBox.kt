@@ -59,18 +59,11 @@ data class RocketBoundingBox (
         floats[7]
     )
 
-    constructor(points: Array<Point>) : this(
-        points[0].toPointF(),
-        points[1].toPointF(),
-        points[2].toPointF(),
-        points[3].toPointF()
-    )
-
-    constructor(points: Array<PointF>) : this(
-        points[0],
-        points[1],
-        points[2],
-        points[3]
+    constructor(points: Array<out Point>?) : this (
+        toPointArray(points)[0].toPointF(),
+        toPointArray(points)[1].toPointF(),
+        toPointArray(points)[2].toPointF(),
+        toPointArray(points)[3].toPointF()
     )
 
     override fun toString(): String = buildString {
@@ -139,15 +132,17 @@ fun RocketBoundingBox.applyRotation(angle: Float, pivot: PointF? = null): Rocket
 }
 
 fun RocketBoundingBox.normalize(): RocketBoundingBox {
-    // Find the minimum x and y (the offset)
     val minX = minOf(topLeft.x, topRight.x, bottomRight.x, bottomLeft.x)
     val minY = minOf(topLeft.y, topRight.y, bottomRight.y, bottomLeft.y)
 
-    // Subtract the offset from all points
     return RocketBoundingBox(
         topLeft = PointF(topLeft.x - minX, topLeft.y - minY),
         topRight = PointF(topRight.x - minX, topRight.y - minY),
         bottomRight = PointF(bottomRight.x - minX, bottomRight.y - minY),
         bottomLeft = PointF(bottomLeft.x - minX, bottomLeft.y - minY)
     )
+}
+
+private fun toPointArray(points: Array<out Point>?): Array<Point> {
+    return points?.toList()?.toTypedArray() ?: arrayOf()
 }

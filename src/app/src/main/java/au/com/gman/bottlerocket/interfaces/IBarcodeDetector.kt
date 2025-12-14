@@ -2,9 +2,6 @@ package au.com.gman.bottlerocket.interfaces
 
 import androidx.camera.core.ImageAnalysis
 
-interface IQrCodeDetector : ImageAnalysis.Analyzer {
+interface IBarcodeDetector : ImageAnalysis.Analyzer {
     fun setListener(listener: ITemplateListener)
-
-    fun setPreviewSize(width: Int, height: Int)
 }
-

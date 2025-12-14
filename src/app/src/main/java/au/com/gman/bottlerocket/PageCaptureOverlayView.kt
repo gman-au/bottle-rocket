@@ -16,6 +16,8 @@ class PageCaptureOverlayView(context: Context, attrs: AttributeSet? = null) : Vi
     private var pageBoundingBox: RocketBoundingBox? = null
     private var qrCodeBoundingBox: RocketBoundingBox? = null
 
+    private var referenceBox: RocketBoundingBox? = null
+
     fun setPageOverlayBox(box: RocketBoundingBox?) {
         pageBoundingBox = box
         // Invalidate the view to trigger a redraw
@@ -25,12 +27,19 @@ class PageCaptureOverlayView(context: Context, attrs: AttributeSet? = null) : Vi
     fun setQrOverlayPath(box: RocketBoundingBox?) {
         qrCodeBoundingBox = box
         // Invalidate the view to trigger a redraw
-        postInvalidate()
+        //postInvalidate()
+    }
+
+    fun setReferencePath(box: RocketBoundingBox?) {
+        referenceBox = box
+        // Invalidate the view to trigger a redraw
+        //postInvalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         pageBoundingBox?.let { canvas.drawPath(it.toPath(), paint) }
         qrCodeBoundingBox?.let { canvas.drawPath(it.toPath(), paint) }
+        referenceBox?.let { canvas.drawPath(it.toPath(), paint) }
     }
 }

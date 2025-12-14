@@ -1,7 +1,7 @@
 package au.com.gman.bottlerocket.interfaces
 
-import au.com.gman.bottlerocket.domain.TemplateMatchResponse
+import au.com.gman.bottlerocket.domain.BarcodeDetectionResult
 
 interface ITemplateListener {
-    fun onDetectionSuccess(matchedTemplate: TemplateMatchResponse)
+    fun onDetectionSuccess(matchedTemplate: BarcodeDetectionResult)
 }
