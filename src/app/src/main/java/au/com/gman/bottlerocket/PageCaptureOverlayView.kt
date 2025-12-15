@@ -57,9 +57,9 @@ class PageCaptureOverlayView(context: Context, attrs: AttributeSet? = null) : Vi
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        pageBoundingBox?.let { canvas.drawPath(it.toPath(), paintRed) }
+        pageBoundingBox?.let { canvas.drawPath(it.toPath(), paintBlue) }
         qrCodeBoundingBox?.let { canvas.drawPath(it.toPath(), paintRed) }
-        imageReferenceBox?.let { canvas.drawPath(it.toPath(), paintBlue) }
-        previewReferenceBox?.let { canvas.drawPath(it.toPath(), paintBlue) }
+        //imageReferenceBox?.let { canvas.drawPath(it.toPath(), paintBlue) }
+        //previewReferenceBox?.let { canvas.drawPath(it.toPath(), paintBlue) }
     }
 }

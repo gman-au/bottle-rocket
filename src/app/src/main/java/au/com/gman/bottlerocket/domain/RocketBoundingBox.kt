@@ -105,6 +105,15 @@ fun RocketBoundingBox.toPointArray(): Array<PointF> {
     return arrayOf(topLeft, topRight, bottomRight, bottomLeft)
 }
 
+fun RocketBoundingBox.toFloatArray(): FloatArray {
+    return floatArrayOf(
+        topLeft.x, topLeft.y,
+        topRight.x, topRight.y,
+        bottomRight.x, bottomRight.y,
+        bottomLeft.x, bottomLeft.y
+    )
+}
+
 fun RocketBoundingBox.toPath() : Path {
     val path = Path()
 

@@ -1,18 +1,17 @@
 package au.com.gman.bottlerocket.qrCode
 
-import android.graphics.PointF
 import android.util.Log
-import au.com.gman.bottlerocket.BottleRocketApplication
+import au.com.gman.bottlerocket.BottleRocketApplication.AppConstants
 import au.com.gman.bottlerocket.domain.BarcodeDetectionResult
 import au.com.gman.bottlerocket.domain.RocketBoundingBox
 import au.com.gman.bottlerocket.domain.applyRotation
 import au.com.gman.bottlerocket.domain.calculateRotationAngle
 import au.com.gman.bottlerocket.domain.normalize
 import au.com.gman.bottlerocket.domain.scaleWithOffset
-import au.com.gman.bottlerocket.interfaces.IViewportRescaler
 import au.com.gman.bottlerocket.interfaces.IQrCodeHandler
 import au.com.gman.bottlerocket.interfaces.IQrCodeTemplateMatcher
 import au.com.gman.bottlerocket.interfaces.IScreenDimensions
+import au.com.gman.bottlerocket.interfaces.IViewportRescaler
 import com.google.mlkit.vision.barcode.common.Barcode
 import javax.inject.Inject
 
@@ -24,14 +23,15 @@ class QrCodeHandler @Inject constructor(
     override fun handle(barcode: Barcode?): BarcodeDetectionResult {
         var matchFound = false
         var pageBoundingBox: RocketBoundingBox? = null
-        var qrBoundingBox: RocketBoundingBox? = null
+        var qrBoundingBoxUnscaled: RocketBoundingBox? = null
+        var qrBoundingBoxScaled: RocketBoundingBox? = null
         var qrCode: String? = null
 
         val pageTemplate = qrCodeTemplateMatcher.tryMatch(barcode?.rawValue ?: "")
 
         if (barcode != null) {
             qrCode = barcode.rawValue
-            qrBoundingBox = RocketBoundingBox(barcode.cornerPoints)
+            qrBoundingBoxUnscaled = RocketBoundingBox(barcode.cornerPoints)
 
             if (!screenDimensions.isInitialised())
                 throw IllegalStateException("Screen dimensions not initialised")
@@ -41,7 +41,7 @@ class QrCodeHandler @Inject constructor(
             val rotationDegrees = screenDimensions.getScreenRotation()
 
             Log.d(
-                BottleRocketApplication.AppConstants.APPLICATION_LOG_TAG,
+                AppConstants.APPLICATION_LOG_TAG,
                 buildString {
                     appendLine("imageSize: ${imageSize?.x} x ${imageSize?.y}")
                     appendLine("previewSize: ${previewSize?.x} x ${previewSize?.y}")
@@ -61,7 +61,7 @@ class QrCodeHandler @Inject constructor(
                     )
 
             Log.d(
-                BottleRocketApplication.AppConstants.APPLICATION_LOG_TAG,
+                AppConstants.APPLICATION_LOG_TAG,
                 buildString {
                     appendLine("scalingFactorViewport: $scalingFactorViewport")
                 }
@@ -69,20 +69,20 @@ class QrCodeHandler @Inject constructor(
 
             // the second scale factor is the comparative QR code vs the actual
             // we need to 'straighten up' the QR code box
-            val rotationAngle = qrBoundingBox.calculateRotationAngle();
+            val rotationAngle = qrBoundingBoxUnscaled.calculateRotationAngle();
 
             Log.d(
-                BottleRocketApplication.AppConstants.APPLICATION_LOG_TAG,
+                AppConstants.APPLICATION_LOG_TAG,
                 buildString {
                     appendLine("rotationAngle: $rotationAngle")
                 }
             )
 
             val straightQrBox =
-                qrBoundingBox
+                qrBoundingBoxUnscaled
                     .applyRotation(
                         -rotationAngle,
-                        qrBoundingBox.bottomLeft
+                        qrBoundingBoxUnscaled.bottomLeft
                     )
                     .normalize()
 
@@ -118,32 +118,26 @@ class QrCodeHandler @Inject constructor(
             if (pageTemplate != null) {
                 matchFound = true
 
-                val qrTopLeft = qrBoundingBox.topLeft
+                val qrTopLeft = qrBoundingBoxUnscaled.topLeft
                 val template = pageTemplate.pageDimensions
 
-                // the page template is offset from the location of the QR code
-                val pageTemplateBoundingBox = RocketBoundingBox(
-                    topLeft = PointF(template.topLeft.x + qrTopLeft.x,template.topLeft.y + qrTopLeft.y),
-                    topRight = PointF(template.topRight.x + qrTopLeft.x, template.topRight.y + qrTopLeft.y),
-                    bottomRight = PointF(template.bottomRight.x + qrTopLeft.x, template.bottomRight.y + qrTopLeft.y),
-                    bottomLeft = PointF(template.bottomLeft.x + qrTopLeft.x, template.bottomLeft.y + qrTopLeft.y)
-                )
-
-                /*val scaledBoundingBox =
-                    pageTemplateBoundingBox
-                        .scale(scalingFactor.x, scalingFactor.y)*/
-
-                // scaling factor must be inaccurate
-                qrBoundingBox =
-                    qrBoundingBox
-//                        .scale(scalingFactorViewport.scale.x, scalingFactorViewport.scale.y)
+                qrBoundingBoxScaled =
+                    qrBoundingBoxUnscaled
                         .scaleWithOffset(scalingFactorViewport)
 
+                pageBoundingBox =
+                    viewportRescaler
+                        .calculatePageBounds(
+                            qrBoundingBoxUnscaled,
+                            qrBoundingBoxScaled,
+                    RocketBoundingBox(pageTemplate.pageDimensions)
+                        )
+
                 Log.d(
-                    BottleRocketApplication.AppConstants.APPLICATION_LOG_TAG,
+                    AppConstants.APPLICATION_LOG_TAG,
                     buildString {
                         appendLine("final qrBoundingBox:")
-                        appendLine("$qrBoundingBox")
+                        appendLine("$qrBoundingBoxUnscaled")
                     }
                 )
 
@@ -162,8 +156,8 @@ class QrCodeHandler @Inject constructor(
             matchFound = matchFound,
             qrCode = qrCode,
             pageTemplate = pageTemplate,
-            pageOverlayPath = null, // pageBoundingBox,
-            qrCodeOverlayPath = qrBoundingBox
+            pageOverlayPath = pageBoundingBox,
+            qrCodeOverlayPath = qrBoundingBoxScaled
         )
     }
 }
