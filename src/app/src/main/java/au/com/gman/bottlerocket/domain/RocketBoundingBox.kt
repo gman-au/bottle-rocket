@@ -75,12 +75,29 @@ data class RocketBoundingBox (
 
 }
 
-fun RocketBoundingBox.scale(scaleX: Float, scaleY: Float): RocketBoundingBox {
+fun RocketBoundingBox.scaleWithOffset(scaleAndOffset: ScaleAndOffset): RocketBoundingBox {
+    val offsetInSourceSpace = PointF(
+        -scaleAndOffset.offset.x / scaleAndOffset.scale.x,  // NEGATE the offset
+        -scaleAndOffset.offset.y / scaleAndOffset.scale.y   // NEGATE the offset
+    )
+
     return RocketBoundingBox(
-        topLeft = PointF(topLeft.x * scaleX, topLeft.y * scaleY),
-        topRight = PointF(topRight.x * scaleX, topRight.y * scaleY),
-        bottomRight = PointF(bottomRight.x * scaleX, bottomRight.y * scaleY),
-        bottomLeft = PointF(bottomLeft.x * scaleX, bottomLeft.y * scaleY)
+        topLeft = PointF(
+            (topLeft.x - offsetInSourceSpace.x) * scaleAndOffset.scale.x,
+            (topLeft.y - offsetInSourceSpace.y) * scaleAndOffset.scale.y,
+        ),
+        topRight = PointF(
+            (topRight.x - offsetInSourceSpace.x) * scaleAndOffset.scale.x,
+            (topRight.y - offsetInSourceSpace.y) * scaleAndOffset.scale.y,
+        ),
+        bottomRight = PointF(
+            (bottomRight.x - offsetInSourceSpace.x) * scaleAndOffset.scale.x,
+            (bottomRight.y - offsetInSourceSpace.y) * scaleAndOffset.scale.y,
+        ),
+        bottomLeft = PointF(
+            (bottomLeft.x - offsetInSourceSpace.x) * scaleAndOffset.scale.x,
+            (bottomLeft.y - offsetInSourceSpace.y) * scaleAndOffset.scale.y,
+        )
     )
 }
 

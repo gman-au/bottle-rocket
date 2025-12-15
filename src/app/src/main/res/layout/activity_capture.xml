@@ -22,10 +22,10 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:scaleType="fillCenter"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/statusText"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/previewView"
+        app:layout_constraintBottom_toBottomOf="@+id/previewView"
+        app:layout_constraintStart_toStartOf="@+id/previewView"
+        app:layout_constraintEnd_toEndOf="@+id/previewView"
     />
 
     <TextView

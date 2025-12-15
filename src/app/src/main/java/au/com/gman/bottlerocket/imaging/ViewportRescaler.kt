@@ -3,31 +3,71 @@ package au.com.gman.bottlerocket.imaging
 import android.graphics.Matrix
 import android.graphics.PointF
 import android.util.Log
+import au.com.gman.bottlerocket.BottleRocketApplication
 import au.com.gman.bottlerocket.domain.RocketBoundingBox
-import au.com.gman.bottlerocket.interfaces.IBoundingBoxRescaler
+import au.com.gman.bottlerocket.domain.ScaleAndOffset
+import au.com.gman.bottlerocket.interfaces.IViewportRescaler
+import au.com.gman.bottlerocket.BottleRocketApplication.AppConstants
 import javax.inject.Inject
 
-class BoundingBoxRescaler @Inject constructor(): IBoundingBoxRescaler {
+class ViewportRescaler @Inject constructor(): IViewportRescaler {
 
-    override fun calculateScalingFactor(
+    override fun calculateScalingFactorWithOffset(
         firstWidth: Float,
         firstHeight: Float,
         secondWidth: Float,
         secondHeight: Float,
-        rotationAngle: Int): PointF {
-        val rotatedView = (rotationAngle % 90 == 0)
+        rotationAngle: Int
+    ): ScaleAndOffset {
 
-        return if (rotatedView) {
-            PointF(
-                secondWidth / firstHeight,
-                secondHeight / firstWidth
-            )
+        // Account for rotation - swap dimensions if rotated 90° or 270°
+        val (actualFirstW, actualFirstH) = if (rotationAngle % 180 != 0) {
+            Pair(firstHeight, firstWidth)
         } else {
-            PointF(
-                secondWidth / firstWidth,
-                secondHeight / firstHeight
-            )
+            Pair(firstWidth, firstHeight)
         }
+
+        // Calculate aspect ratios
+        val firstAspect = actualFirstW / actualFirstH
+        val secondAspect = secondWidth / secondHeight
+
+        val scale: PointF
+        val offset: PointF
+
+        if (firstAspect > secondAspect) {
+            // First is wider - horizontal crop (left/right sides cut off)
+            // Scale based on height
+            val uniformScale = secondHeight / actualFirstH
+            scale = PointF(uniformScale, uniformScale)
+
+            // Calculate how much width is cropped
+            val scaledWidth = actualFirstW * uniformScale
+            val cropAmount = (scaledWidth - secondWidth) / 2f
+
+            // The crop happens in the FIRST coordinate space, then scaled
+            val cropInFirstSpace = cropAmount / uniformScale
+            offset = PointF(-cropInFirstSpace * uniformScale, 0f)
+
+        } else {
+            // First is taller - vertical crop (top/bottom cut off)
+            // Scale based on width
+            val uniformScale = secondWidth / actualFirstW
+            scale = PointF(uniformScale, uniformScale)
+
+            // Calculate how much height is cropped
+            val scaledHeight = actualFirstH * uniformScale
+            val cropAmount = (scaledHeight - secondHeight) / 2f
+
+            val cropInFirstSpace = cropAmount / uniformScale
+            offset = PointF(0f, -cropInFirstSpace * uniformScale)
+        }
+
+        Log.d(AppConstants.APPLICATION_LOG_TAG, "First: ${actualFirstW}x${actualFirstH} (aspect: ${firstAspect})")
+        Log.d(AppConstants.APPLICATION_LOG_TAG, "Second: ${secondWidth}x${secondHeight} (aspect: ${secondAspect})")
+        Log.d(AppConstants.APPLICATION_LOG_TAG, "Scale: ${scale.x}, ${scale.y}")
+        Log.d(AppConstants.APPLICATION_LOG_TAG, "Offset: ${offset.x}, ${offset.y}")
+
+        return ScaleAndOffset(scale, offset)
     }
 
     override fun rescaleUsingQrCorners(

@@ -1,10 +1,10 @@
 package au.com.gman.bottlerocket.injection
 import au.com.gman.bottlerocket.imaging.BarcodeDetector
-import au.com.gman.bottlerocket.imaging.BoundingBoxRescaler
+import au.com.gman.bottlerocket.imaging.ViewportRescaler
 import au.com.gman.bottlerocket.imaging.ScreenDimensions
 import au.com.gman.bottlerocket.qrCode.QrCodeTemplateMatcher
 import au.com.gman.bottlerocket.interfaces.IBarcodeDetector
-import au.com.gman.bottlerocket.interfaces.IBoundingBoxRescaler
+import au.com.gman.bottlerocket.interfaces.IViewportRescaler
 import au.com.gman.bottlerocket.interfaces.IQrCodeHandler
 import au.com.gman.bottlerocket.interfaces.IQrCodeTemplateMatcher
 import au.com.gman.bottlerocket.interfaces.IScreenDimensions
@@ -35,9 +35,9 @@ abstract class ImagingModule {
     ) : IQrCodeHandler
 
     @Binds
-    abstract fun bindTemplateRescaler(
-        pageTemplateRescaler: BoundingBoxRescaler
-    ) : IBoundingBoxRescaler
+    abstract fun bindViewportRescaler(
+        viewportRescaler: ViewportRescaler
+    ) : IViewportRescaler
 
     @Singleton
     @Binds

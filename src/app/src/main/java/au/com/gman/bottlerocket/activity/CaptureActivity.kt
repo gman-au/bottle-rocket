@@ -22,7 +22,6 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import au.com.gman.bottlerocket.BottleRocketApplication
 import au.com.gman.bottlerocket.PageCaptureOverlayView
 import au.com.gman.bottlerocket.R
 import au.com.gman.bottlerocket.domain.RocketBoundingBox
@@ -38,6 +37,7 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import javax.inject.Inject
+import au.com.gman.bottlerocket.BottleRocketApplication.AppConstants
 
 @AndroidEntryPoint
 class CaptureActivity : AppCompatActivity() {
@@ -190,17 +190,17 @@ class CaptureActivity : AppCompatActivity() {
                     this, cameraSelector, preview, imageCapture, imageAnalyzer
                 )
 
-                Log.d(
-                    BottleRocketApplication.AppConstants.APPLICATION_LOG_TAG,
-                    "aspectRatio: ${previewView.viewPort?.aspectRatio}"
-                )
+                Log.d(AppConstants.APPLICATION_LOG_TAG, "previewView (measured): ${previewView.measuredWidth} x ${previewView.measuredHeight}")
+                Log.d(AppConstants.APPLICATION_LOG_TAG, "previewView (actual): ${previewView.width} x ${previewView.height}")
+                Log.d(AppConstants.APPLICATION_LOG_TAG, "overlayView (measured): ${overlayView.measuredWidth} x ${overlayView.measuredHeight}")
+                Log.d(AppConstants.APPLICATION_LOG_TAG, "overlayView (actual): ${overlayView.width} x ${overlayView.height}")
 
                 overlayView.post {
                     screenDimensions
                         .setPreviewSize(
                             PointF(
-                                overlayView.measuredWidth.toFloat(),
-                                overlayView.measuredHeight.toFloat(),
+                                previewView.measuredWidth.toFloat(),
+                                previewView.measuredHeight.toFloat(),
                                 //overlayView.width.toFloat(),
                                 //overlayView.height.toFloat()
                             )

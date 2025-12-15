@@ -8,8 +8,8 @@ import au.com.gman.bottlerocket.domain.RocketBoundingBox
 import au.com.gman.bottlerocket.domain.applyRotation
 import au.com.gman.bottlerocket.domain.calculateRotationAngle
 import au.com.gman.bottlerocket.domain.normalize
-import au.com.gman.bottlerocket.domain.scale
-import au.com.gman.bottlerocket.interfaces.IBoundingBoxRescaler
+import au.com.gman.bottlerocket.domain.scaleWithOffset
+import au.com.gman.bottlerocket.interfaces.IViewportRescaler
 import au.com.gman.bottlerocket.interfaces.IQrCodeHandler
 import au.com.gman.bottlerocket.interfaces.IQrCodeTemplateMatcher
 import au.com.gman.bottlerocket.interfaces.IScreenDimensions
@@ -18,7 +18,7 @@ import javax.inject.Inject
 
 class QrCodeHandler @Inject constructor(
     private val screenDimensions: IScreenDimensions,
-    private val pageTemplateRescaler: IBoundingBoxRescaler,
+    private val viewportRescaler: IViewportRescaler,
     private val qrCodeTemplateMatcher: IQrCodeTemplateMatcher
 ): IQrCodeHandler {
     override fun handle(barcode: Barcode?): BarcodeDetectionResult {
@@ -51,8 +51,8 @@ class QrCodeHandler @Inject constructor(
 
             // the first scale factor is the viewport vs the preview
             val scalingFactorViewport =
-                pageTemplateRescaler
-                    .calculateScalingFactor(
+                viewportRescaler
+                    .calculateScalingFactorWithOffset(
                         firstWidth = imageSize!!.x,
                         firstHeight = imageSize.y,
                         secondWidth = previewSize!!.x,
@@ -87,8 +87,8 @@ class QrCodeHandler @Inject constructor(
                     .normalize()
 
             val scalingFactorQrCode =
-                pageTemplateRescaler
-                    .calculateScalingFactor(
+                viewportRescaler
+                    .calculateScalingFactorWithOffset(
                         firstWidth = 20.0F,
                         firstHeight = 20.0F,
                         secondWidth = straightQrBox.topRight.x - straightQrBox.topLeft.x,
@@ -96,7 +96,7 @@ class QrCodeHandler @Inject constructor(
                         rotationAngle = 0
                     )
 
-            Log.d(
+            /*Log.d(
                 BottleRocketApplication.AppConstants.APPLICATION_LOG_TAG,
                 buildString {
                     appendLine("scalingFactorQrCode: $scalingFactorQrCode")
@@ -104,8 +104,8 @@ class QrCodeHandler @Inject constructor(
             )
 
             val scalingFactor = PointF(
-                scalingFactorViewport.x * 1,//,scalingFactorQrCode.x,
-                scalingFactorViewport.y * 1//scalingFactorQrCode.y
+                scalingFactorViewport.scale.x * 1,//,scalingFactorQrCode.x,
+                scalingFactorViewport.scale.y * 1//scalingFactorQrCode.y
             )
 
             Log.d(
@@ -113,7 +113,7 @@ class QrCodeHandler @Inject constructor(
                 buildString {
                     appendLine("final scalingFactor: $scalingFactor")
                 }
-            )
+            )*/
 
             if (pageTemplate != null) {
                 matchFound = true
@@ -129,15 +129,15 @@ class QrCodeHandler @Inject constructor(
                     bottomLeft = PointF(template.bottomLeft.x + qrTopLeft.x, template.bottomLeft.y + qrTopLeft.y)
                 )
 
-                val scaledBoundingBox = pageTemplateBoundingBox.scale(scalingFactor.x, scalingFactor.y)
+                /*val scaledBoundingBox =
+                    pageTemplateBoundingBox
+                        .scale(scalingFactor.x, scalingFactor.y)*/
 
                 // scaling factor must be inaccurate
                 qrBoundingBox =
                     qrBoundingBox
-                        .scale(
-                            scalingFactor.x,
-                            scalingFactor.y
-                        )
+//                        .scale(scalingFactorViewport.scale.x, scalingFactorViewport.scale.y)
+                        .scaleWithOffset(scalingFactorViewport)
 
                 Log.d(
                     BottleRocketApplication.AppConstants.APPLICATION_LOG_TAG,
@@ -147,12 +147,14 @@ class QrCodeHandler @Inject constructor(
                     }
                 )
 
+                /*
                 pageBoundingBox =
                     scaledBoundingBox
                         .applyRotation(
                             rotationAngle,
                             scaledBoundingBox.bottomLeft
                         )
+                 */
             }
         }
 
