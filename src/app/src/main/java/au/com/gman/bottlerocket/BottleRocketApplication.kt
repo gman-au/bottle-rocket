@@ -9,6 +9,8 @@ class BottleRocketApplication : Application() {
         super.onCreate()
         // Your global initialization code here (e.g., crash reporting, shared network client)
         Log.d("MyApplication", "Application class created and onCreate called")
+
+        System.loadLibrary("opencv_java4")
     }
 
     companion object {

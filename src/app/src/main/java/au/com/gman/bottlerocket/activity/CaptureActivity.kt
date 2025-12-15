@@ -102,10 +102,7 @@ class CaptureActivity : AppCompatActivity() {
                     matchFound = matchedTemplate.matchFound
                     captureButton.isEnabled = matchFound
 
-                    statusText.text = when (matchFound) {
-                        true -> matchedTemplate.qrCode
-                        false -> matchedTemplate.qrCode ?: "No code found"
-                    }
+                    statusText.text = matchedTemplate.validationMessage ?: matchedTemplate.qrCode ?: "Position QR code"
                     statusText.setBackgroundColor(
                         when (matchFound) {
                             true -> 0x8000FF00.toInt()

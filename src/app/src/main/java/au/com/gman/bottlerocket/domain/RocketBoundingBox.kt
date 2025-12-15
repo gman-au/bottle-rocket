@@ -155,14 +155,14 @@ fun RocketBoundingBox.applyRotation(angle: Float, pivot: PointF? = null): Rocket
 }
 
 fun RocketBoundingBox.normalize(): RocketBoundingBox {
-    val minX = minOf(topLeft.x, topRight.x, bottomRight.x, bottomLeft.x)
-    val minY = minOf(topLeft.y, topRight.y, bottomRight.y, bottomLeft.y)
+    val offsetX = topLeft.x
+    val offsetY = topLeft.y
 
     return RocketBoundingBox(
-        topLeft = PointF(topLeft.x - minX, topLeft.y - minY),
-        topRight = PointF(topRight.x - minX, topRight.y - minY),
-        bottomRight = PointF(bottomRight.x - minX, bottomRight.y - minY),
-        bottomLeft = PointF(bottomLeft.x - minX, bottomLeft.y - minY)
+        topLeft = PointF(0f, 0f),
+        topRight = PointF(topRight.x - offsetX, topRight.y - offsetY),
+        bottomRight = PointF(bottomRight.x - offsetX, bottomRight.y - offsetY),
+        bottomLeft = PointF(bottomLeft.x - offsetX, bottomLeft.y - offsetY)
     )
 }
 
