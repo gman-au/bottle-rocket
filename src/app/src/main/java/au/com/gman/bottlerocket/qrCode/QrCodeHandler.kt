@@ -1,7 +1,6 @@
 package au.com.gman.bottlerocket.qrCode
 
 import android.util.Log
-import au.com.gman.bottlerocket.BottleRocketApplication
 import au.com.gman.bottlerocket.domain.BarcodeDetectionResult
 import au.com.gman.bottlerocket.domain.RocketBoundingBox
 import au.com.gman.bottlerocket.domain.calculateRotationAngle
@@ -9,11 +8,9 @@ import au.com.gman.bottlerocket.domain.round
 import au.com.gman.bottlerocket.domain.scaleWithOffset
 import au.com.gman.bottlerocket.imaging.BoundingBoxStabilizer
 import au.com.gman.bottlerocket.imaging.PageTemplateRescaler
-import au.com.gman.bottlerocket.interfaces.IBoundingBoxValidator
 import au.com.gman.bottlerocket.interfaces.IQrCodeHandler
 import au.com.gman.bottlerocket.interfaces.IQrCodeTemplateMatcher
 import au.com.gman.bottlerocket.interfaces.IScreenDimensions
-import au.com.gman.bottlerocket.interfaces.IViewportRescaler
 import com.google.mlkit.vision.barcode.common.Barcode
 import javax.inject.Inject
 
@@ -21,14 +18,10 @@ class QrCodeHandler @Inject constructor(
     private val screenDimensions: IScreenDimensions,
     private val pageTemplateRescaler: PageTemplateRescaler,
     private val qrCodeTemplateMatcher: IQrCodeTemplateMatcher,
-    private val boundingBoxValidator: IBoundingBoxValidator
 ) : IQrCodeHandler {
 
     companion object {
         private const val TAG = "QrCodeHandler"
-
-        private const val USE_SMOOTHING = !BottleRocketApplication.USE_SMOOTHING
-        private const val USE_VALIDATION = !BottleRocketApplication.USE_VALIDATION
     }
 
     private val qrStabilizer = BoundingBoxStabilizer(0.15f, 3)
@@ -48,13 +41,10 @@ class QrCodeHandler @Inject constructor(
 
         if (barcode != null) {
             qrCode = barcode.rawValue
-            val rawQrBounds = RocketBoundingBox(barcode.cornerPoints)
 
-            qrBoundingBoxUnscaled = when (USE_SMOOTHING) {
-                true -> qrStabilizer
-                    .stabilize(rawQrBounds)
-                false -> rawQrBounds
-            }
+            val qrCornerPoints = RocketBoundingBox(barcode.cornerPoints)
+
+            qrBoundingBoxUnscaled = qrCornerPoints
 
             if (!screenDimensions.isInitialised())
                 throw IllegalStateException("Screen dimensions not initialised")
@@ -88,29 +78,8 @@ class QrCodeHandler @Inject constructor(
                     rawPageBounds
                         .scaleWithOffset(scalingFactorViewport)
 
-                // Stabilize page bounds
-                val stabilizedPageBounds = when (USE_SMOOTHING) {
-                    true -> pageStabilizer.stabilize(scaledPageBounds)
-                    false -> scaledPageBounds
-                }
-
-                matchFound = qrStabilizer.isStable() && pageStabilizer.isStable()
-
-                // Validate the page bounds
-                val isValid =
-                    boundingBoxValidator.isValid(stabilizedPageBounds) || !USE_VALIDATION
-                val isStable =
-                    (qrStabilizer.isStable() && pageStabilizer.isStable()) || !USE_SMOOTHING
-
-                if (isValid && isStable) {
-                    // Only show page overlay when valid
-                    pageBoundingBox = stabilizedPageBounds
-                    matchFound = true
-                } else {
-                    // Show validation feedback
-                    val issues = boundingBoxValidator.getValidationIssues(stabilizedPageBounds)
-                    validationMessage = issues.firstOrNull() ?: "Align camera with page"
-                }
+                pageBoundingBox = scaledPageBounds
+                matchFound = true
 
                 Log.d(
                     TAG,
@@ -123,8 +92,8 @@ class QrCodeHandler @Inject constructor(
                 Log.d(
                     TAG,
                     buildString {
-                        appendLine("final stabilizedPageBounds:")
-                        appendLine("$stabilizedPageBounds")
+                        appendLine("final pageBoundingBox:")
+                        appendLine("$pageBoundingBox")
                     }
                 )
             } else {

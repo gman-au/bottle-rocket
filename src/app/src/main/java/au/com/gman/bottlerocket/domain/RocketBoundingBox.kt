@@ -7,6 +7,8 @@ import android.graphics.PointF
 import android.graphics.Rect
 import android.graphics.RectF
 import androidx.core.graphics.toPointF
+import org.opencv.core.MatOfPoint2f
+import org.opencv.core.Point as opencvPoint
 import kotlin.math.atan2
 import kotlin.math.roundToInt
 
@@ -172,6 +174,15 @@ fun RocketBoundingBox.round(): RocketBoundingBox {
         topRight = Point(topRight.x.roundToInt(), topRight.y.roundToInt()).toPointF(),
         bottomRight = Point(bottomRight.x.roundToInt(), bottomRight.y.roundToInt()).toPointF(),
         bottomLeft = Point(bottomLeft.x.roundToInt(), bottomLeft.y.roundToInt()).toPointF()
+    )
+}
+
+fun RocketBoundingBox.toMatOfPoint2f(): MatOfPoint2f {
+    return MatOfPoint2f(
+        opencvPoint(topLeft.x.toDouble(), topLeft.y.toDouble()),
+        opencvPoint(topRight.x.toDouble(), topRight.y.toDouble()),
+        opencvPoint(bottomRight.x.toDouble(), bottomRight.y.toDouble()),
+        opencvPoint(bottomLeft.x.toDouble(), bottomLeft.y.toDouble())
     )
 }
 

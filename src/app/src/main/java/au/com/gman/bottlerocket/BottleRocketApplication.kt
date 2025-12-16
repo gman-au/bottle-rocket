@@ -17,6 +17,6 @@ class BottleRocketApplication : Application() {
     companion object {
         // You can add a static instance for easy access if needed
         const val USE_SMOOTHING = true
-        const val USE_VALIDATION = false
+        const val USE_VALIDATION = true
     }
 }
