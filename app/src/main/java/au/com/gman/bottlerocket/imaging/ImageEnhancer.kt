@@ -8,7 +8,9 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Rect
 import android.util.Log
+import au.com.gman.bottlerocket.domain.BarcodeDetectionResult
 import au.com.gman.bottlerocket.domain.QrTemplateInfo
+import au.com.gman.bottlerocket.extensions.toRect
 import au.com.gman.bottlerocket.interfaces.IImageEnhancer
 import javax.inject.Inject
 import kotlin.math.max
@@ -17,7 +19,7 @@ import kotlin.math.min
 class ImageEnhancer @Inject constructor() : IImageEnhancer {
 
     companion object {
-        private const val TAG = "ImageProcessor"
+        private const val TAG = "ImageEnhancer"
     }
 
     override fun enhanceImage(bitmap: Bitmap): Bitmap {
@@ -42,45 +44,35 @@ class ImageEnhancer @Inject constructor() : IImageEnhancer {
         paint.colorFilter = ColorMatrixColorFilter(cm)
 
         val canvas = Canvas(enhanced)
-        canvas.drawBitmap(bitmap, 0f, 0f, paint)
+
+        canvas
+            .drawBitmap(
+                bitmap,
+                0f,
+                0f,
+                paint
+            )
 
         return enhanced
     }
 
-    /*
-    override fun processImageWithQR(
+    override fun processImageWithMatchedTemplate(
         bitmap: Bitmap,
-        qrData: String,
-        qrBoundingBox: Rect?
-    ): Bitmap {
-        if (qrBoundingBox == null) {
-            Log.w(TAG, "No QR bounding box provided, using basic processing")
-            return processImage(bitmap, qrData)
+        detectionResult: BarcodeDetectionResult
+    ): Bitmap? {
+
+        if (!detectionResult.matchFound) return null
+
+        if (detectionResult.pageOverlayPath == null) {
+            Log.w(TAG, "No page bounding box provided")
+            return null
         }
 
-        val templateInfo = parseQRCode(qrData)
+        var pageTemplateBox = detectionResult.pageOverlayPath
 
-        // Check if this is a 04o template (500x500 box up and right from QR)
-        if (qrData.contains("04o", ignoreCase = true)) {
-            return cropFromQRPosition(bitmap, qrBoundingBox, 500, 500, "UP_RIGHT")
-        }
-
-        // Add more template-specific handling here
-        when (templateInfo.position) {
-            "LEFT" -> {
-                // QR in bottom-left, page extends up and right
-                return cropPageFromBottomLeft(bitmap, qrBoundingBox, templateInfo)
-            }
-            "RIGHT" -> {
-                // QR in bottom-right, page extends up and left
-                return cropPageFromBottomRight(bitmap, qrBoundingBox, templateInfo)
-            }
-            else -> {
-                return processImage(bitmap, qrData)
-            }
-        }
+        return cropFromQRPosition(bitmap, pageTemplateBox.toRect(), 500, 500, "UP_RIGHT")
     }
-*/
+
     private fun cropFromQRPosition(
         bitmap: Bitmap,
         qrBox: Rect,
@@ -98,6 +90,7 @@ class ImageEnhancer @Inject constructor() : IImageEnhancer {
                 val bottom = min(bitmap.height, qrBox.top)
                 Rect(left, top, right, bottom)
             }
+
             "UP_RIGHT" -> {
                 val left = max(0, qrBox.right)
                 val top = max(0, qrBox.top - height)
@@ -105,6 +98,7 @@ class ImageEnhancer @Inject constructor() : IImageEnhancer {
                 val bottom = min(bitmap.height, qrBox.top)
                 Rect(left, top, right, bottom)
             }
+
             "DOWN_LEFT" -> {
                 val left = max(0, qrBox.left - width)
                 val top = max(0, qrBox.bottom)
@@ -112,6 +106,7 @@ class ImageEnhancer @Inject constructor() : IImageEnhancer {
                 val bottom = min(bitmap.height, qrBox.bottom + height)
                 Rect(left, top, right, bottom)
             }
+
             "DOWN_RIGHT" -> {
                 val left = max(0, qrBox.right)
                 val top = max(0, qrBox.bottom)
@@ -119,6 +114,7 @@ class ImageEnhancer @Inject constructor() : IImageEnhancer {
                 val bottom = min(bitmap.height, qrBox.bottom + height)
                 Rect(left, top, right, bottom)
             }
+
             else -> return bitmap
         }
 

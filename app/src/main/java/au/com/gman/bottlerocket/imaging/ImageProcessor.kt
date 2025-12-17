@@ -2,6 +2,7 @@ package au.com.gman.bottlerocket.imaging
 
 import android.graphics.BitmapFactory
 import android.util.Log
+import au.com.gman.bottlerocket.domain.BarcodeDetectionResult
 import au.com.gman.bottlerocket.interfaces.IImageEnhancer
 import au.com.gman.bottlerocket.interfaces.IImageProcessingListener
 import au.com.gman.bottlerocket.interfaces.IImageProcessor
@@ -22,28 +23,30 @@ class ImageProcessor @Inject constructor(
         this.listener = listener
     }
 
-    override fun processImage(imageFile: File) {
+    override fun processImage(imageFile: File, lastBarcodeDetectionResult: BarcodeDetectionResult) {
         try {
 
             val originalBitmap =
                 BitmapFactory
                     .decodeFile(imageFile.absolutePath)
 
+            if (originalBitmap == null || originalBitmap.height == 0 || originalBitmap.width == 0)
+                throw Exception("Bitmap is empty")
+
             Log.d(TAG, "Processing image: ${originalBitmap.width}x${originalBitmap.height}")
 
-            // Process with QR bounding box for smart cropping
             val processedBitmap =
                 imageEnhancer
-                    .enhanceImage(originalBitmap)
-            /*imageProcessor.processImageWithQR(
-            originalBitmap,
-            qrData,
-            qrBoundingBox
-        )*/
+                    .processImageWithMatchedTemplate(
+                        originalBitmap,
+                        lastBarcodeDetectionResult
+                    )
 
-            Log.d(TAG, "Processed: ${processedBitmap.width}x${processedBitmap.height}")
+            if (processedBitmap != null) {
+                Log.d(TAG, "Processed: ${processedBitmap.width}x${processedBitmap.height}")
 
-            listener?.onProcessingSuccess(processedBitmap)
+                listener?.onProcessingSuccess(processedBitmap)
+            }
 
         } catch (e: Exception) {
             Log.e(TAG, "Processing failed", e)
@@ -52,7 +55,4 @@ class ImageProcessor @Inject constructor(
             imageFile.delete()
         }
     }
-
-
-
 }

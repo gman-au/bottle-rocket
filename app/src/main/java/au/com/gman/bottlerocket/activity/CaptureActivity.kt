@@ -4,17 +4,13 @@ import android.Manifest
 import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.PointF
 import android.hardware.camera2.CaptureRequest
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
-import android.util.Log
 import android.util.Range
-import android.widget.Button
 import android.widget.ImageButton
-import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
@@ -33,7 +29,6 @@ import androidx.core.content.ContextCompat
 import au.com.gman.bottlerocket.PageCaptureOverlayView
 import au.com.gman.bottlerocket.R
 import au.com.gman.bottlerocket.domain.BarcodeDetectionResult
-import au.com.gman.bottlerocket.imaging.ImageProcessor
 import au.com.gman.bottlerocket.interfaces.IBarcodeDetector
 import au.com.gman.bottlerocket.interfaces.IScreenDimensions
 import au.com.gman.bottlerocket.interfaces.IBarcodeDetectionListener
@@ -49,7 +44,6 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import javax.inject.Inject
-import kotlin.text.insert
 
 @AndroidEntryPoint
 class CaptureActivity : AppCompatActivity() {
@@ -73,7 +67,7 @@ class CaptureActivity : AppCompatActivity() {
     private lateinit var cancelButton: ImageButton
     private lateinit var cameraExecutor: ExecutorService
 
-    private lateinit var lastMatchedTemplate: BarcodeDetectionResult
+    private lateinit var lastBarcodeDetectionResult: BarcodeDetectionResult
 
     private var imageCapture: ImageCapture? = null
     private var matchFound = false
@@ -108,7 +102,7 @@ class CaptureActivity : AppCompatActivity() {
                             steadyFrameIndicator.reset()
                         }
 
-                        lastMatchedTemplate = barcodeDetectionResult
+                        lastBarcodeDetectionResult = barcodeDetectionResult
 
                         overlayView.setPageOverlayBox(barcodeDetectionResult.pageOverlayPath)
                         overlayView.setQrOverlayPath(barcodeDetectionResult.qrCodeOverlayPath)
@@ -280,10 +274,14 @@ class CaptureActivity : AppCompatActivity() {
                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                         Toast.makeText(baseContext, "Processing...", Toast.LENGTH_SHORT).show()
 
-                        cameraExecutor.execute {
-                            imageProcessor
-                                .processImage(photoFile)
-                        }
+                        cameraExecutor
+                            .execute {
+                                imageProcessor
+                                    .processImage(
+                                        photoFile,
+                                        lastBarcodeDetectionResult
+                                    )
+                            }
                     }
                 }
             )
