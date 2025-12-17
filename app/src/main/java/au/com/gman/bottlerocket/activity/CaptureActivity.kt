@@ -33,9 +33,12 @@ import androidx.core.content.ContextCompat
 import au.com.gman.bottlerocket.PageCaptureOverlayView
 import au.com.gman.bottlerocket.R
 import au.com.gman.bottlerocket.domain.BarcodeDetectionResult
+import au.com.gman.bottlerocket.imaging.ImageProcessor
 import au.com.gman.bottlerocket.interfaces.IBarcodeDetector
 import au.com.gman.bottlerocket.interfaces.IScreenDimensions
 import au.com.gman.bottlerocket.interfaces.IBarcodeDetectionListener
+import au.com.gman.bottlerocket.interfaces.IImageProcessingListener
+import au.com.gman.bottlerocket.interfaces.IImageProcessor
 import au.com.gman.bottlerocket.interfaces.ISteadyFrameIndicator
 import au.com.gman.bottlerocket.interfaces.ISteadyFrameListener
 import au.com.gman.bottlerocket.network.ApiService
@@ -46,12 +49,16 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import javax.inject.Inject
+import kotlin.text.insert
 
 @AndroidEntryPoint
 class CaptureActivity : AppCompatActivity() {
 
     @Inject
     lateinit var barcodeDetector: IBarcodeDetector
+
+    @Inject
+    lateinit var imageProcessor: IImageProcessor
 
     @Inject
     lateinit var screenDimensions: IScreenDimensions
@@ -90,36 +97,60 @@ class CaptureActivity : AppCompatActivity() {
 
         barcodeDetector
             .setListener(object : IBarcodeDetectionListener {
-            override fun onDetectionSuccess(barcodeDetectionResult: BarcodeDetectionResult) {
-                runOnUiThread {
+                override fun onDetectionSuccess(barcodeDetectionResult: BarcodeDetectionResult) {
+                    runOnUiThread {
 
-                    matchFound = barcodeDetectionResult.matchFound
+                        matchFound = barcodeDetectionResult.matchFound
 
-                    if (matchFound) {
-                        steadyFrameIndicator.increment()
+                        if (matchFound) {
+                            steadyFrameIndicator.increment()
+                        } else {
+                            steadyFrameIndicator.reset()
+                        }
+
+                        lastMatchedTemplate = barcodeDetectionResult
+
+                        overlayView.setPageOverlayBox(barcodeDetectionResult.pageOverlayPath)
+                        overlayView.setQrOverlayPath(barcodeDetectionResult.qrCodeOverlayPath)
                     }
-                    else {
-                        steadyFrameIndicator.reset()
-                    }
-
-                    lastMatchedTemplate = barcodeDetectionResult
-
-                    overlayView.setPageOverlayBox(barcodeDetectionResult.pageOverlayPath)
-                    overlayView.setQrOverlayPath(barcodeDetectionResult.qrCodeOverlayPath)
                 }
-            }
 
-        })
+            })
 
-        steadyFrameIndicator.setListener(object : ISteadyFrameListener {
-            override fun onSteadyResult() {
-                // take the photo!
-                takePhoto()
+        imageProcessor
+            .setListener(object : IImageProcessingListener {
+                override fun onProcessingSuccess(processedBitmap: Bitmap) {
+                    runOnUiThread {
+                        Toast.makeText(baseContext, "Processed successfully...", Toast.LENGTH_SHORT)
+                            .show()
+                    }
 
-                // reset
-                steadyFrameIndicator.reset()
-            }
-        })
+                    saveImage(processedBitmap)
+
+                }
+
+                override fun onProcessingFailure() {
+                    runOnUiThread {
+                        Toast.makeText(
+                            baseContext,
+                            "There was an error processing the image",
+                            Toast.LENGTH_SHORT
+                        )
+                            .show()
+                    }
+                }
+            })
+
+        steadyFrameIndicator
+            .setListener(object : ISteadyFrameListener {
+                override fun onSteadyResult() {
+                    // take the photo!
+                    takePhoto()
+
+                    // reset
+                    steadyFrameIndicator.reset()
+                }
+            })
 
         if (allPermissionsGranted()) {
             startCamera()
@@ -236,74 +267,27 @@ class CaptureActivity : AppCompatActivity() {
 
         imageCapture
             .takePicture(
-            outputOptions,
-            ContextCompat.getMainExecutor(this),
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onError(exc: ImageCaptureException) {
-                    Toast.makeText(
-                        baseContext,
-                        "Capture failed: ${exc.message}",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
+                outputOptions,
+                ContextCompat.getMainExecutor(this),
+                object : ImageCapture.OnImageSavedCallback {
+                    override fun onError(exc: ImageCaptureException) {
+                        Toast.makeText(
+                            baseContext, "Capture failed: ${exc.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
 
-                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    Toast.makeText(baseContext, "Processing...", Toast.LENGTH_SHORT).show()
+                    override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                        Toast.makeText(baseContext, "Processing...", Toast.LENGTH_SHORT).show()
 
-                    cameraExecutor.execute {
-                        processAndSaveImage(photoFile)
+                        cameraExecutor.execute {
+                            imageProcessor
+                                .processImage(photoFile)
+                        }
                     }
                 }
-            }
-        )
+            )
     }
-
-
-    private fun processAndSaveImage(imageFile: File) {
-        try {
-            val originalBitmap = BitmapFactory.decodeFile(imageFile.absolutePath)
-
-            Log.d(TAG, "Processing image: ${originalBitmap.width}x${originalBitmap.height}")
-
-            // Process with QR bounding box for smart cropping
-            val processedBitmap = originalBitmap
-                /*imageProcessor.processImageWithQR(
-                originalBitmap,
-                qrData,
-                qrBoundingBox
-            )*/
-
-            Log.d(TAG, "Processed: ${processedBitmap.width}x${processedBitmap.height}")
-
-            saveImage(processedBitmap)
-
-            // Upload to backend (optional)
-            /*
-            apiService.uploadImage(imageFile, qrData, object : ApiService.UploadCallback {
-                override fun onSuccess(response: UploadResponse) {
-                    runOnUiThread {
-                        Toast.makeText(baseContext, "Uploaded!", Toast.LENGTH_SHORT).show()
-                    }
-                }
-
-                override fun onError(message: String) {
-                    runOnUiThread {
-                        Toast.makeText(baseContext, message, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            })
-            */
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Processing failed", e)
-            runOnUiThread {
-                Toast.makeText(baseContext, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        } finally {
-            imageFile.delete()
-        }
-    }
-
 
     private fun saveImage(bitmap: Bitmap) {
         val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
@@ -314,8 +298,8 @@ class CaptureActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
                 put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/BottleRocket")
             }
-            //put(MediaStore.Images.Media.DESCRIPTION, "QR: $qrData")
         }
+
 
         val uri =
             contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
@@ -355,9 +339,9 @@ class CaptureActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val TAG = "BottleRocket"
-        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
+        private const val TAG = "CaptureActivity"
         private const val REQUEST_CODE_PERMISSIONS = 10
+        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
 }
