@@ -17,60 +17,87 @@ class PageTemplateRescaler @Inject constructor() : IPageTemplateRescaler {
         private const val TAG = "PageTemplateRescaler"
     }
 
-    override fun calculatePageBounds(
-        qrBoxActual: RocketBoundingBox,
-        pageBoxIdeal: RocketBoundingBox,
-        rotationAngle: Float
+    /**
+     * Calculate page bounds by extending QR box edges proportionally.
+     * Much simpler and more stable than homography!
+     *
+     * @param qrBox The detected QR code bounding box (4 corners)
+     * @param pageWidthInQrUnits How many QR-widths wide is the page? (e.g., 9.0)
+     * @param pageHeightInQrUnits How many QR-heights tall is the page? (e.g., 13.0)
+     * @param qrOffsetX How many QR-widths from left edge is the QR code? (e.g., 2.0 = QR starts 2 units from left)
+     * @param qrOffsetY How many QR-heights from top edge is the QR code? (e.g., 3.0 = QR starts 3 units from top)
+     * @return The page bounding box
+     */
+    fun calculatePageBoundsSimple(
+        qrBox: RocketBoundingBox,
+        pageWidthInQrUnits: Float,
+        pageHeightInQrUnits: Float,
+        qrOffsetX: Float = 0f,
+        qrOffsetY: Float = 0f
     ): RocketBoundingBox {
 
-        val qrSize = 1.0
-
-        // Source: axis-aligned square (what we want to map FROM)
-        val qrBoxIdealPts =
-            MatOfPoint2f(
-                Point(0.0, 0.0),
-                Point(qrSize, 0.0),
-                Point(qrSize, qrSize),
-                Point(0.0, qrSize)
-            )
-
-        val qrBoxActualPts = qrBoxActual.toMatOfPoint2f()
-        val pageBoxIdealPts = pageBoxIdeal.toMatOfPoint2f()
-
-        val homography =
-            Calib3d
-                .findHomography(
-                    qrBoxIdealPts,
-                    qrBoxActualPts,
-                    Calib3d.RANSAC,
-                    1.0
-                )
-
-        Log.d(TAG, "Homography matrix:\n${homography.dump()}")
-
-        // Apply perspective transform
-        val transformedPageMat = MatOfPoint2f()
-        org.opencv.core.Core.perspectiveTransform(
-            pageBoxIdealPts,
-            transformedPageMat,
-            homography
+        // Get the QR box edge vectors (these already contain perspective)
+        val topEdge = PointF(
+            qrBox.topRight.x - qrBox.topLeft.x,
+            qrBox.topRight.y - qrBox.topLeft.y
         )
 
-        val transformedPoints = transformedPageMat.toArray()
+        val leftEdge = PointF(
+            qrBox.bottomLeft.x - qrBox.topLeft.x,
+            qrBox.bottomLeft.y - qrBox.topLeft.y
+        )
 
-        Log.d(TAG, "Page after perspective transform:")
-        transformedPoints.forEachIndexed { i, pt ->
-            Log.d(TAG, "  [$i]: (${pt.x}, ${pt.y})")
-        }
+        // Calculate page top-left by offsetting from QR top-left
+        val pageTopLeft = PointF(
+            qrBox.topLeft.x - (topEdge.x * qrOffsetX) - (leftEdge.x * qrOffsetY),
+            qrBox.topLeft.y - (topEdge.y * qrOffsetX) - (leftEdge.y * qrOffsetY)
+        )
+
+        // Calculate the four page corners by scaling the edge vectors
+        val pageTopRight = PointF(
+            pageTopLeft.x + (topEdge.x * pageWidthInQrUnits),
+            pageTopLeft.y + (topEdge.y * pageWidthInQrUnits)
+        )
+
+        val pageBottomLeft = PointF(
+            pageTopLeft.x + (leftEdge.x * pageHeightInQrUnits),
+            pageTopLeft.y + (leftEdge.y * pageHeightInQrUnits)
+        )
+
+        val pageBottomRight = PointF(
+            pageTopLeft.x + (topEdge.x * pageWidthInQrUnits) + (leftEdge.x * pageHeightInQrUnits),
+            pageTopLeft.y + (topEdge.y * pageWidthInQrUnits) + (leftEdge.y * pageHeightInQrUnits)
+        )
 
         return RocketBoundingBox(
-            topLeft = PointF(transformedPoints[0].x.toFloat(), transformedPoints[0].y.toFloat()),
-            topRight = PointF(transformedPoints[1].x.toFloat(), transformedPoints[1].y.toFloat()),
-            bottomRight = PointF(
-                transformedPoints[2].x.toFloat(),
-                transformedPoints[2].y.toFloat()
-            ),
-            bottomLeft = PointF(transformedPoints[3].x.toFloat(), transformedPoints[3].y.toFloat())
+            topLeft = pageTopLeft,
+            topRight = pageTopRight,
+            bottomRight = pageBottomRight,
+            bottomLeft = pageBottomLeft
+        )
+    }
+
+    /**
+     * Alternative: If your template gives you the page dimensions as a RocketBoundingBox
+     * where the QR code is at (0,0) and the dimensions are in QR units
+     */
+    override fun calculatePageBoundsFromTemplate(
+        qrBox: RocketBoundingBox,
+        pageTemplate: RocketBoundingBox
+    ): RocketBoundingBox {
+        // Extract dimensions from template
+        // Assuming template has QR at topLeft (0,0) with size 1x1
+        val pageWidthInQrUnits = pageTemplate.topRight.x - pageTemplate.topLeft.x
+        val pageHeightInQrUnits = pageTemplate.bottomLeft.y - pageTemplate.topLeft.y
+        val qrOffsetX = -pageTemplate.topLeft.x // How far left is page edge from QR
+        val qrOffsetY = -pageTemplate.topLeft.y // How far up is page edge from QR
+
+        return calculatePageBoundsSimple(
+            qrBox,
+            pageWidthInQrUnits,
+            pageHeightInQrUnits,
+            qrOffsetX,
+            qrOffsetY
         )
     }
 }

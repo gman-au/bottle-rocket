@@ -6,9 +6,9 @@ import au.com.gman.bottlerocket.domain.RocketBoundingBox
 import au.com.gman.bottlerocket.domain.calculateRotationAngle
 import au.com.gman.bottlerocket.domain.round
 import au.com.gman.bottlerocket.domain.scaleWithOffset
-import au.com.gman.bottlerocket.imaging.PageTemplateRescaler
 import au.com.gman.bottlerocket.imaging.RocketBoundingBoxMedianFilter
 import au.com.gman.bottlerocket.imaging.aggressiveSmooth
+import au.com.gman.bottlerocket.interfaces.IPageTemplateRescaler
 import au.com.gman.bottlerocket.interfaces.IQrCodeHandler
 import au.com.gman.bottlerocket.interfaces.IQrCodeTemplateMatcher
 import au.com.gman.bottlerocket.interfaces.IScreenDimensions
@@ -17,7 +17,7 @@ import javax.inject.Inject
 
 class QrCodeHandler @Inject constructor(
     private val screenDimensions: IScreenDimensions,
-    private val pageTemplateRescaler: PageTemplateRescaler,
+    private val pageTemplateRescaler: IPageTemplateRescaler,
     private val qrCodeTemplateMatcher: IQrCodeTemplateMatcher,
 ) : IQrCodeHandler {
 
@@ -90,11 +90,11 @@ class QrCodeHandler @Inject constructor(
 
                 val rawPageBounds =
                     pageTemplateRescaler
-                        .calculatePageBounds(
+                        .calculatePageBoundsFromTemplate(
                             qrCornerPointsBoxUnscaled,
-                            RocketBoundingBox(pageTemplate.pageDimensions),
-                            rotationAngle
+                            RocketBoundingBox(pageTemplate.pageDimensions)
                         )
+
 
                 val scaledPageBounds =
                     rawPageBounds
@@ -103,8 +103,8 @@ class QrCodeHandler @Inject constructor(
                 // OPTION 1: Aggressive smoothing with complete outlier rejection
                 pageBoundingBox = scaledPageBounds.aggressiveSmooth(
                     previous = previousPageBounds,
-                    smoothFactor = 0.9f,        // 90% previous, 10% current
-                    maxJumpThreshold = 50f      // Completely reject frames with ANY corner jumping >50px
+                    smoothFactor = 0.7f,        // 90% previous, 10% current
+                    maxJumpThreshold = 100f      // Completely reject frames with ANY corner jumping >50px
                 )
 
                 // OPTION 2: Median filter (uncomment to try - most stable but slight lag)
