@@ -2,7 +2,6 @@ package au.com.gman.bottlerocket
 import android.app.Application
 import android.util.Log
 import dagger.hilt.android.HiltAndroidApp
-import org.opencv.android.OpenCVLoader
 
 @HiltAndroidApp
 class BottleRocketApplication : Application() {
