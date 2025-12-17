@@ -33,6 +33,8 @@ import au.com.gman.bottlerocket.domain.BarcodeDetectionResult
 import au.com.gman.bottlerocket.interfaces.IBarcodeDetector
 import au.com.gman.bottlerocket.interfaces.IScreenDimensions
 import au.com.gman.bottlerocket.interfaces.IBarcodeDetectionListener
+import au.com.gman.bottlerocket.interfaces.ISteadyFrameIndicator
+import au.com.gman.bottlerocket.interfaces.ISteadyFrameListener
 import au.com.gman.bottlerocket.network.ApiService
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
@@ -50,6 +52,9 @@ class CaptureActivity : AppCompatActivity() {
 
     @Inject
     lateinit var screenDimensions: IScreenDimensions
+
+    @Inject
+    lateinit var steadyFrameIndicator: ISteadyFrameIndicator
 
     private lateinit var previewView: PreviewView
 
@@ -95,13 +100,20 @@ class CaptureActivity : AppCompatActivity() {
 
         barcodeDetector
             .setListener(object : IBarcodeDetectionListener {
-            override fun onDetectionSuccess(matchedTemplate: BarcodeDetectionResult) {
+            override fun onDetectionSuccess(barcodeDetectionResult: BarcodeDetectionResult) {
                 runOnUiThread {
 
-                    matchFound = matchedTemplate.matchFound
+                    matchFound = barcodeDetectionResult.matchFound
                     captureButton.isEnabled = matchFound
 
-                    statusText.text = matchedTemplate.validationMessage ?: matchedTemplate.qrCode ?: "Position QR code"
+                    if (matchFound) {
+                        steadyFrameIndicator.increment()
+                        statusText.text = barcodeDetectionResult.validationMessage ?: barcodeDetectionResult.qrCode ?: "Position QR code"
+                    }
+                    else {
+                        steadyFrameIndicator.reset()
+                    }
+
                     statusText.setBackgroundColor(
                         when (matchFound) {
                             true -> 0x8000FF00.toInt()
@@ -109,14 +121,23 @@ class CaptureActivity : AppCompatActivity() {
                         }
                     )
 
-                    lastMatchedTemplate = matchedTemplate
+                    lastMatchedTemplate = barcodeDetectionResult
 
-                    overlayView.setPageOverlayBox(matchedTemplate.pageOverlayPath)
-                    overlayView.setQrOverlayPath(matchedTemplate.qrCodeOverlayPath)
+                    overlayView.setPageOverlayBox(barcodeDetectionResult.pageOverlayPath)
+                    overlayView.setQrOverlayPath(barcodeDetectionResult.qrCodeOverlayPath)
                     //updateDebugText()
                 }
             }
 
+        })
+
+        steadyFrameIndicator.setListener(object : ISteadyFrameListener {
+            override fun onSteadyResult() {
+                // take the photo!
+
+                // reset
+                steadyFrameIndicator.reset()
+            }
         })
 
         if (allPermissionsGranted()) {
@@ -126,18 +147,6 @@ class CaptureActivity : AppCompatActivity() {
                 this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
             )
         }
-    }
-
-    private fun updateDebugText() {
-        val builder = StringBuilder()
-        builder.appendLine()
-        builder.appendLine(lastMatchedTemplate.qrCode)
-        builder.appendLine("QR box:")
-        builder.appendLine(lastMatchedTemplate.qrCodeOverlayPath.toString())
-        builder.appendLine("Page overlay box:")
-        builder.appendLine(lastMatchedTemplate.pageOverlayPath.toString())
-        builder.appendLine("Preview size: ${previewWidth} x ${previewHeight}")
-        debugText.text = builder.toString()
     }
 
     @OptIn(ExperimentalCamera2Interop::class)

@@ -3,6 +3,7 @@ import au.com.gman.bottlerocket.imaging.BarcodeDetector
 import au.com.gman.bottlerocket.imaging.PageTemplateRescaler
 import au.com.gman.bottlerocket.imaging.RocketBoundingBoxMedianFilter
 import au.com.gman.bottlerocket.imaging.ScreenDimensions
+import au.com.gman.bottlerocket.imaging.SteadyFrameIndicator
 import au.com.gman.bottlerocket.imaging.ViewportRescaler
 import au.com.gman.bottlerocket.interfaces.IBarcodeDetector
 import au.com.gman.bottlerocket.interfaces.IPageTemplateRescaler
@@ -10,6 +11,7 @@ import au.com.gman.bottlerocket.interfaces.IQrCodeHandler
 import au.com.gman.bottlerocket.interfaces.IQrCodeTemplateMatcher
 import au.com.gman.bottlerocket.interfaces.IRocketBoundingBoxMedianFilter
 import au.com.gman.bottlerocket.interfaces.IScreenDimensions
+import au.com.gman.bottlerocket.interfaces.ISteadyFrameIndicator
 import au.com.gman.bottlerocket.interfaces.IViewportRescaler
 import au.com.gman.bottlerocket.qrCode.QrCodeHandler
 import au.com.gman.bottlerocket.qrCode.QrCodeTemplateMatcher
@@ -47,6 +49,12 @@ abstract class ImagingModule {
     abstract fun bindPageTemplateRescaler(
         pageTemplateRescaler: PageTemplateRescaler
     ) : IPageTemplateRescaler
+
+    @Singleton
+    @Binds
+    abstract fun bindSteadyFrameIndicator(
+        steadyFrameIndicator: SteadyFrameIndicator
+    ) : ISteadyFrameIndicator
 
     @Singleton
     @Binds

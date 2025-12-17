@@ -10,4 +10,9 @@
     <color name="bottle_rocket_light">#FF96F7D0</color>
     <color name="bottle_rocket_light_disabled">#5596F7D0</color>
     <color name="debug_text">#FFFF0000</color>
+
+    <color name="capture_status_green_border">#FF96F7D0</color>
+    <color name="capture_status_green_transparent">#4496F7D0</color>
+    <color name="capture_status_amber_border">#FFF7C696</color>
+    <color name="capture_status_amber_transparent">#44F7C696</color>
 </resources>

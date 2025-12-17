@@ -4,6 +4,7 @@ import android.graphics.Matrix
 import android.graphics.Path
 import android.graphics.Point
 import android.graphics.PointF
+import android.graphics.Rect
 import androidx.core.graphics.toPointF
 import au.com.gman.bottlerocket.domain.RocketBoundingBox
 import au.com.gman.bottlerocket.domain.ScaleAndOffset
@@ -89,6 +90,13 @@ fun RocketBoundingBox.toFloatArray(): FloatArray {
     )
 }
 
+fun RocketBoundingBox.toRect(): Rect {
+    return Rect(
+        topLeft.x.toInt(), topLeft.y.toInt(),
+        bottomRight.x.toInt(), bottomRight.y.toInt()
+    )
+}
+
 fun RocketBoundingBox.toPath(): Path {
     val path = Path()
 
@@ -130,6 +138,27 @@ fun RocketBoundingBox.applyRotation(angle: Float, pivot: PointF? = null): Rocket
     matrix.mapPoints(points)
 
     return RocketBoundingBox(points)
+}
+
+fun RocketBoundingBox.fillFromBottom(fillPercentage: Float): RocketBoundingBox {
+    val clampedPercentage = fillPercentage.coerceIn(0f, 1f)
+
+    val newTopLeft = PointF(
+        bottomLeft.x + (topLeft.x - bottomLeft.x) * clampedPercentage,
+        bottomLeft.y + (topLeft.y - bottomLeft.y) * clampedPercentage
+    )
+
+    val newTopRight = PointF(
+        bottomRight.x + (topRight.x - bottomRight.x) * clampedPercentage,
+        bottomRight.y + (topRight.y - bottomRight.y) * clampedPercentage
+    )
+
+    return RocketBoundingBox(
+        topLeft = newTopLeft,
+        topRight = newTopRight,
+        bottomRight = bottomRight,
+        bottomLeft = bottomLeft
+    )
 }
 
 fun RocketBoundingBox.round(): RocketBoundingBox {
