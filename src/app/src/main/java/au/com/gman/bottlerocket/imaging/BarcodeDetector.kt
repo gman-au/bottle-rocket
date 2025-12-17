@@ -6,10 +6,9 @@ import androidx.camera.core.ImageProxy
 import au.com.gman.bottlerocket.interfaces.IBarcodeDetector
 import au.com.gman.bottlerocket.interfaces.IQrCodeHandler
 import au.com.gman.bottlerocket.interfaces.IScreenDimensions
-import au.com.gman.bottlerocket.interfaces.ITemplateListener
+import au.com.gman.bottlerocket.interfaces.IBarcodeDetectionListener
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import javax.inject.Inject
 
@@ -22,19 +21,19 @@ class BarcodeDetector @Inject constructor(
         BarcodeScannerOptions =
             BarcodeScannerOptions
                 .Builder()
-                .setBarcodeFormats(
+                /*.setBarcodeFormats(
                     Barcode.FORMAT_QR_CODE,
                     Barcode.FORMAT_AZTEC
-                )
+                )*/
                 .build()
 
     private val scanner =
         BarcodeScanning
             .getClient(scannerOptions)
 
-    private var listener: ITemplateListener? = null
+    private var listener: IBarcodeDetectionListener? = null
 
-    override fun setListener(listener: ITemplateListener) {
+    override fun setListener(listener: IBarcodeDetectionListener) {
         this.listener = listener
     }
 

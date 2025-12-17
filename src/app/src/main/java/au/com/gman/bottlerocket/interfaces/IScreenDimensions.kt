@@ -7,10 +7,7 @@ interface IScreenDimensions {
     fun setImageSize(size: PointF?)
     fun setPreviewSize(size: PointF?)
     fun setScreenRotation(angle: Int?)
-
     fun isInitialised(): Boolean
-
     fun recalculateScalingFactorIfRequired()
-
     fun getScalingFactor(): ScaleAndOffset?
 }

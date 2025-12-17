@@ -1,16 +1,11 @@
 package au.com.gman.bottlerocket.domain
 
-import android.graphics.Matrix
-import android.graphics.Path
 import android.graphics.Point
 import android.graphics.PointF
 import android.graphics.Rect
 import android.graphics.RectF
 import androidx.core.graphics.toPointF
-import org.opencv.core.MatOfPoint2f
-import org.opencv.core.Point as opencvPoint
-import kotlin.math.atan2
-import kotlin.math.roundToInt
+import au.com.gman.bottlerocket.extensions.toPointArray
 
 data class RocketBoundingBox(
     val topLeft: PointF,
@@ -78,114 +73,3 @@ data class RocketBoundingBox(
 
 }
 
-fun RocketBoundingBox.scaleWithOffset(scaleAndOffset: ScaleAndOffset): RocketBoundingBox {
-    val offsetInSourceSpace = PointF(
-        -scaleAndOffset.offset.x / scaleAndOffset.scale.x,
-        -scaleAndOffset.offset.y / scaleAndOffset.scale.y
-    )
-
-    return RocketBoundingBox(
-        topLeft = PointF(
-            (topLeft.x - offsetInSourceSpace.x) * scaleAndOffset.scale.x,
-            (topLeft.y - offsetInSourceSpace.y) * scaleAndOffset.scale.y,
-        ),
-        topRight = PointF(
-            (topRight.x - offsetInSourceSpace.x) * scaleAndOffset.scale.x,
-            (topRight.y - offsetInSourceSpace.y) * scaleAndOffset.scale.y,
-        ),
-        bottomRight = PointF(
-            (bottomRight.x - offsetInSourceSpace.x) * scaleAndOffset.scale.x,
-            (bottomRight.y - offsetInSourceSpace.y) * scaleAndOffset.scale.y,
-        ),
-        bottomLeft = PointF(
-            (bottomLeft.x - offsetInSourceSpace.x) * scaleAndOffset.scale.x,
-            (bottomLeft.y - offsetInSourceSpace.y) * scaleAndOffset.scale.y,
-        )
-    )
-}
-
-fun RocketBoundingBox.toFloatArray(): FloatArray {
-    return floatArrayOf(
-        topLeft.x, topLeft.y,
-        topRight.x, topRight.y,
-        bottomRight.x, bottomRight.y,
-        bottomLeft.x, bottomLeft.y
-    )
-}
-
-fun RocketBoundingBox.toPath(): Path {
-    val path = Path()
-
-    path.moveTo(topLeft.x, topLeft.y)
-    path.lineTo(topRight.x, topRight.y)
-    path.lineTo(bottomRight.x, bottomRight.y)
-    path.lineTo(bottomLeft.x, bottomLeft.y)
-    path.close()
-
-    return path
-}
-
-fun RocketBoundingBox.calculateRotationAngle(): Float {
-    val deltaX = (topRight.x - topLeft.x)
-    val deltaY = (topRight.y - topLeft.y)
-
-    val angleRadians = atan2(deltaY, deltaX)
-    val angleDegrees = Math.toDegrees(angleRadians.toDouble()).toFloat()
-
-    return angleDegrees
-}
-
-fun RocketBoundingBox.applyRotation(angle: Float, pivot: PointF? = null): RocketBoundingBox {
-    val actualPivot = pivot ?: PointF(
-        (topLeft.x + bottomRight.x) / 2f,
-        (topLeft.y + bottomRight.y) / 2f
-    )
-
-    val matrix = Matrix()
-    matrix.setRotate(angle, actualPivot.x, actualPivot.y)
-
-    val points = floatArrayOf(
-        topLeft.x, topLeft.y,
-        topRight.x, topRight.y,
-        bottomRight.x, bottomRight.y,
-        bottomLeft.x, bottomLeft.y
-    )
-
-    matrix.mapPoints(points)
-
-    return RocketBoundingBox(points)
-}
-
-fun RocketBoundingBox.normalize(): RocketBoundingBox {
-    val offsetX = topLeft.x
-    val offsetY = topLeft.y
-
-    return RocketBoundingBox(
-        topLeft = PointF(0f, 0f),
-        topRight = PointF(topRight.x - offsetX, topRight.y - offsetY),
-        bottomRight = PointF(bottomRight.x - offsetX, bottomRight.y - offsetY),
-        bottomLeft = PointF(bottomLeft.x - offsetX, bottomLeft.y - offsetY)
-    )
-}
-
-fun RocketBoundingBox.round(): RocketBoundingBox {
-    return RocketBoundingBox(
-        topLeft = Point(topLeft.x.roundToInt(), topLeft.y.roundToInt()).toPointF(),
-        topRight = Point(topRight.x.roundToInt(), topRight.y.roundToInt()).toPointF(),
-        bottomRight = Point(bottomRight.x.roundToInt(), bottomRight.y.roundToInt()).toPointF(),
-        bottomLeft = Point(bottomLeft.x.roundToInt(), bottomLeft.y.roundToInt()).toPointF()
-    )
-}
-
-fun RocketBoundingBox.toMatOfPoint2f(): MatOfPoint2f {
-    return MatOfPoint2f(
-        opencvPoint(topLeft.x.toDouble(), topLeft.y.toDouble()),
-        opencvPoint(topRight.x.toDouble(), topRight.y.toDouble()),
-        opencvPoint(bottomRight.x.toDouble(), bottomRight.y.toDouble()),
-        opencvPoint(bottomLeft.x.toDouble(), bottomLeft.y.toDouble())
-    )
-}
-
-private fun toPointArray(points: Array<out Point>?): Array<Point> {
-    return points?.toList()?.toTypedArray() ?: arrayOf()
-}

@@ -1,13 +1,9 @@
 package au.com.gman.bottlerocket.imaging
 
-import android.graphics.Matrix
 import android.graphics.PointF
 import android.util.Log
-import au.com.gman.bottlerocket.domain.RocketBoundingBox
 import au.com.gman.bottlerocket.domain.ScaleAndOffset
 import au.com.gman.bottlerocket.interfaces.IViewportRescaler
-import au.com.gman.bottlerocket.domain.normalize
-import au.com.gman.bottlerocket.domain.toFloatArray
 import javax.inject.Inject
 
 class ViewportRescaler @Inject constructor() : IViewportRescaler {

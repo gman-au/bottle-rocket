@@ -30,10 +30,9 @@ import androidx.core.content.ContextCompat
 import au.com.gman.bottlerocket.PageCaptureOverlayView
 import au.com.gman.bottlerocket.R
 import au.com.gman.bottlerocket.domain.BarcodeDetectionResult
-import au.com.gman.bottlerocket.domain.RocketBoundingBox
 import au.com.gman.bottlerocket.interfaces.IBarcodeDetector
 import au.com.gman.bottlerocket.interfaces.IScreenDimensions
-import au.com.gman.bottlerocket.interfaces.ITemplateListener
+import au.com.gman.bottlerocket.interfaces.IBarcodeDetectionListener
 import au.com.gman.bottlerocket.network.ApiService
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
@@ -95,7 +94,7 @@ class CaptureActivity : AppCompatActivity() {
         }
 
         barcodeDetector
-            .setListener(object : ITemplateListener {
+            .setListener(object : IBarcodeDetectionListener {
             override fun onDetectionSuccess(matchedTemplate: BarcodeDetectionResult) {
                 runOnUiThread {
 

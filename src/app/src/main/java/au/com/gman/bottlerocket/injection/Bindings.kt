@@ -1,14 +1,14 @@
 package au.com.gman.bottlerocket.injection
 import au.com.gman.bottlerocket.imaging.BarcodeDetector
-import au.com.gman.bottlerocket.imaging.BoundingBoxValidator
 import au.com.gman.bottlerocket.imaging.PageTemplateRescaler
+import au.com.gman.bottlerocket.imaging.RocketBoundingBoxMedianFilter
 import au.com.gman.bottlerocket.imaging.ScreenDimensions
 import au.com.gman.bottlerocket.imaging.ViewportRescaler
 import au.com.gman.bottlerocket.interfaces.IBarcodeDetector
-import au.com.gman.bottlerocket.interfaces.IBoundingBoxValidator
 import au.com.gman.bottlerocket.interfaces.IPageTemplateRescaler
 import au.com.gman.bottlerocket.interfaces.IQrCodeHandler
 import au.com.gman.bottlerocket.interfaces.IQrCodeTemplateMatcher
+import au.com.gman.bottlerocket.interfaces.IRocketBoundingBoxMedianFilter
 import au.com.gman.bottlerocket.interfaces.IScreenDimensions
 import au.com.gman.bottlerocket.interfaces.IViewportRescaler
 import au.com.gman.bottlerocket.qrCode.QrCodeHandler
@@ -48,14 +48,15 @@ abstract class ImagingModule {
         pageTemplateRescaler: PageTemplateRescaler
     ) : IPageTemplateRescaler
 
-    @Binds
-    abstract fun bindBoundingBoxValidator(
-        boundingBoxValidator: BoundingBoxValidator
-    ) : IBoundingBoxValidator
-
     @Singleton
     @Binds
     abstract fun bindScreenDimensions(
         screenDimensions: ScreenDimensions
     ) : IScreenDimensions
+
+    @Singleton
+    @Binds
+    abstract fun bindRocketBoundingBoxMedianFilter(
+        rocketBoundingBoxMedianFilter: RocketBoundingBoxMedianFilter
+    ) : IRocketBoundingBoxMedianFilter
 }

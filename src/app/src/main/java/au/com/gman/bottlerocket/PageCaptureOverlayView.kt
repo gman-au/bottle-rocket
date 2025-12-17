@@ -5,7 +5,7 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
 import au.com.gman.bottlerocket.domain.RocketBoundingBox
-import au.com.gman.bottlerocket.domain.toPath
+import au.com.gman.bottlerocket.extensions.toPath
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 

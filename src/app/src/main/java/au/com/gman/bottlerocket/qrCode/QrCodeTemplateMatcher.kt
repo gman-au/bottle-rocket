@@ -13,10 +13,10 @@ class QrCodeTemplateMatcher @Inject constructor() : IQrCodeTemplateMatcher {
         "04o" to PageTemplate(
             type = "1",
             pageDimensions = RocketBoundingBox(
-                topLeft = PointF(0f, -220f),
-                topRight = PointF(350f, -220f),
-                bottomRight = PointF(350f, 0f),
-                bottomLeft = PointF(0f, 0f)
+                topLeft = PointF(0f, -25.0f),
+                topRight = PointF(15.0f, -25.0f),
+                bottomRight = PointF(15.0f, 1.0f),
+                bottomLeft = PointF(0f, 1.0f)
             )
         ),
         "P01 V1F T02 S000" to PageTemplate(
