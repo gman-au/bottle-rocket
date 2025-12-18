@@ -43,68 +43,68 @@ class ImageEnhancer @Inject constructor(
             return null
         }
 
-        var viewportOverlayPath = detectionResult.pageOverlayPath
+        // Rotate the bitmap first
+        val rotatedBitmap = bitmap.rotate(detectionResult.cameraRotation)
 
-        val totalRotation = detectionResult.cameraRotation - detectionResult.boundingBoxRotation
+        // IMPORTANT: These are the ImageAnalysis dimensions where barcodes were detected
+        val imageAnalysisSize = PointF(1200f, 1600f)  // The actual analysis resolution
 
-        val rotatedBitmap =
-            bitmap
-                .rotate(detectionResult.cameraRotation)
-//                .rotate(totalRotation)
+        Log.d(TAG, "ImageAnalysis dimensions: ${imageAnalysisSize.x}x${imageAnalysisSize.y}")
+        Log.d(TAG, "Rotated bitmap: ${rotatedBitmap.width}x${rotatedBitmap.height}")
 
-        var bitmapScalingFactor =
-            bitmapRescaler
-                .calculateScalingFactor(
-                    sourceWidth = screenDimensions.getTargetSize()!!.x,
-                    sourceHeight = screenDimensions.getTargetSize()!!.y,
-                    targetWidth = rotatedBitmap.width.toFloat(),
-                    targetHeight = rotatedBitmap.height.toFloat(),
+        // Calculate scaling factors from ImageAnalysis coordinates to bitmap coordinates
+        val scaleX = rotatedBitmap.width.toFloat() / imageAnalysisSize.x
+        val scaleY = rotatedBitmap.height.toFloat() / imageAnalysisSize.y
 
-                )
-        var previousScreenDimensions = screenDimensions.getTargetSize()
-        Log.d(TAG, "previousScreenDimensions: ${previousScreenDimensions!!.x}x${previousScreenDimensions!!.y}")
-        Log.d(TAG, "rotatedBitmap: ${rotatedBitmap.width}x${rotatedBitmap.height}")
+        Log.d(TAG, "Scale factors: X=$scaleX, Y=$scaleY")
 
-        Log.d(TAG, "viewportOverlayPath: $viewportOverlayPath")
-        Log.d(TAG, "bitmapScalingFactor: $bitmapScalingFactor")
-
-        bitmapScalingFactor = ScaleAndOffset(
-            scale = PointF(2F, 2F),
-            offset = PointF(0F, 0F)
+        // Scale the overlay from ImageAnalysis coordinates to bitmap coordinates
+        val scaledOverlay = detectionResult.pageOverlayPath.scaleUpWithOffset(
+            ScaleAndOffset(
+                PointF(scaleX, scaleY),
+                PointF(0F, 0F)
+            )
         )
 
-        var overlayToDraw = detectionResult.pageOverlayPath
-            //.scaleUpWithOffset(bitmapScalingFactor)
-            //.applyRotation(-detectionResult.boundingBoxRotation)
-        //overlayToDraw = overlayToDraw.applyRotation(-detectionResult.boundingBoxRotation)
+        val scaledQrOverlay = detectionResult.qrCodeOverlayPath?.scaleUpWithOffset(
+            ScaleAndOffset(
+                PointF(scaleX, scaleY),
+                PointF(0F, 0F)
+            )
+        )
 
-        /*overlayToDraw =
-            detectionResult
-                .pageOverlayPath
-                .rotateAroundCenter(
-                    degrees = totalRotation,
-                    bitmapWidth = bitmap.width,
-                    bitmapHeight = bitmap.height
-                )*/
+        Log.d(TAG, "Original overlay: ${detectionResult.pageOverlayPath}")
+        Log.d(TAG, "Scaled overlay: $scaledOverlay")
 
-        //overlayToDraw = overlayToDraw.scaleUpWithOffset(bitmapScalingFactor)
-
-        val correctedBitmap =
-            rotatedBitmap
-        /*.extractPageWithPerspective(
-            pageBounds = rotatedPageBounds,
-            targetDimensions = detectionResult.pageTemplate.pageDimensions
-        )*/
-
-        val enhancedBitmap =
-            correctedBitmap
-                .enhanceImage(
-                    detectionResult.qrCodeOverlayPath,
-                    overlayToDraw
+        // Apply rotation if needed
+        val finalOverlay = if (detectionResult.boundingBoxRotation != 0f) {
+            scaledOverlay.applyRotation(
+                -detectionResult.boundingBoxRotation,
+                PointF(
+                    rotatedBitmap.width.toFloat() / 2f,
+                    rotatedBitmap.height.toFloat() / 2f
                 )
+            )
+        } else {
+            scaledOverlay
+        }
 
+        val finalQrOverlay = if (detectionResult.boundingBoxRotation != 0f) {
+            scaledQrOverlay?.applyRotation(
+                -detectionResult.boundingBoxRotation,
+                PointF(
+                    rotatedBitmap.width.toFloat() / 2f,
+                    rotatedBitmap.height.toFloat() / 2f
+                )
+            )
+        } else {
+            scaledQrOverlay
+        }
 
-        var pageTemplateBox = detectionResult.pageOverlayPath
+        val enhancedBitmap = rotatedBitmap.enhanceImage(
+            finalQrOverlay,
+            finalOverlay
+        )
 
         return enhancedBitmap
     }
@@ -115,8 +115,8 @@ class ImageEnhancer @Inject constructor(
     }
 
     private fun Bitmap.enhanceImage(
-        qrBoundingBox: RocketBoundingBox? = null,
-        pageBoundingBox: RocketBoundingBox? = null,
+        pageBoundingBoxUnscaled: RocketBoundingBox? = null,
+        pageBoundingBoxScaled: RocketBoundingBox? = null,
     ): Bitmap {
 
         val enhanced =
@@ -148,18 +148,25 @@ class ImageEnhancer @Inject constructor(
                 paint
             )
 
-        var debugPaint = Paint()
+        var debugPaintRed = Paint()
             .apply {
                 color = Color.RED
                 style = Paint.Style.STROKE
                 strokeWidth = 8f
             }
 
-        if (qrBoundingBox != null)
-            canvas.drawPath(qrBoundingBox.toPath(), debugPaint)
+        var debugPaintGreen = Paint()
+            .apply {
+                color = Color.GREEN
+                style = Paint.Style.STROKE
+                strokeWidth = 8f
+            }
 
-        if (pageBoundingBox != null)
-            canvas.drawPath(pageBoundingBox.toPath(), debugPaint)
+        if (pageBoundingBoxUnscaled != null)
+            canvas.drawPath(pageBoundingBoxUnscaled.toPath(), debugPaintRed)
+
+        if (pageBoundingBoxScaled != null)
+            canvas.drawPath(pageBoundingBoxScaled.toPath(), debugPaintGreen)
 
         return enhanced
     }

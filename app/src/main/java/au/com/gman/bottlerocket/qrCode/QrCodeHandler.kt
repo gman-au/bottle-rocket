@@ -32,6 +32,7 @@ class QrCodeHandler @Inject constructor(
     override fun handle(barcode: Barcode?): BarcodeDetectionResult {
         var matchFound = false
         var pageBoundingBox: RocketBoundingBox? = null
+        var pageBoundingBoxUnscaled: RocketBoundingBox? = null  // ADD THIS
         var qrCornerPointsBoxUnscaled: RocketBoundingBox? = null
         var qrCornerPointsBoxScaled: RocketBoundingBox? = null
         var qrCodeValue: String? = null
@@ -40,100 +41,60 @@ class QrCodeHandler @Inject constructor(
         var boundingBoxRotation: Float = 0F
         var scalingFactorViewport: ScaleAndOffset? = null
 
-        val pageTemplate =
-            qrCodeTemplateMatcher
-                .tryMatch(barcode?.rawValue ?: "")
+        val pageTemplate = qrCodeTemplateMatcher.tryMatch(barcode?.rawValue ?: "")
 
         if (barcode != null) {
             qrCodeValue = barcode.rawValue
-
             val qrCornerPoints = RocketBoundingBox(barcode.cornerPoints)
-
-            // Use raw corner points - don't stabilize the input
-            // The homography amplifies tiny movements, so we stabilize AFTER
             qrCornerPointsBoxUnscaled = qrCornerPoints
 
             if (!screenDimensions.isInitialised())
                 throw IllegalStateException("Screen dimensions not initialised")
 
-            screenDimensions
-                .recalculateScalingFactorIfRequired()
-
-            scalingFactorViewport =
-                screenDimensions
-                    .getScalingFactor()
-
-            boundingBoxRotation =
-                qrCornerPointsBoxUnscaled
-                    .calculateRotationAngle()
-
-            cameraRotation =
-                screenDimensions
-                    .getScreenRotation()
+            screenDimensions.recalculateScalingFactorIfRequired()
+            scalingFactorViewport = screenDimensions.getScalingFactor()
+            boundingBoxRotation = qrCornerPointsBoxUnscaled.calculateRotationAngle()
+            cameraRotation = screenDimensions.getScreenRotation()
 
             if (pageTemplate != null && scalingFactorViewport != null) {
 
-                qrCornerPointsBoxScaled =
-                    qrCornerPointsBoxUnscaled
-                        .scaleUpWithOffset(scalingFactorViewport)
+                qrCornerPointsBoxScaled = qrCornerPointsBoxUnscaled
+                    .scaleUpWithOffset(scalingFactorViewport)
 
-                Log.d(
-                    TAG,
-                    buildString {
-                        appendLine("qrCornerPointsBoxUnscaled:")
-                        appendLine("$qrCornerPointsBoxUnscaled")
-                    }
-                )
+                // Calculate page bounds in UNSCALED (ImageAnalysis) space
+                val rawPageBounds = pageTemplateRescaler
+                    .calculatePageBoundsFromTemplate(
+                        qrCornerPointsBoxUnscaled,
+                        RocketBoundingBox(pageTemplate.pageDimensions)
+                    )
 
-                Log.d(
-                    TAG,
-                    buildString {
-                        appendLine("qrCornerPointsBoxScaled:")
-                        appendLine("$qrCornerPointsBoxScaled")
-                    }
-                )
+                // Store the unscaled version
+                pageBoundingBoxUnscaled = rawPageBounds
 
-                val rawPageBounds =
-                    pageTemplateRescaler
-                        .calculatePageBoundsFromTemplate(
-                            qrCornerPointsBoxUnscaled,
-                            RocketBoundingBox(pageTemplate.pageDimensions)
-                        )
+                // Scale for preview display
+                val scaledPageBounds = rawPageBounds
+                    .scaleUpWithOffset(scalingFactorViewport)
 
-                val scaledPageBounds =
-                    rawPageBounds
-                        .scaleUpWithOffset(scalingFactorViewport)
+                // Apply smoothing to the SCALED version (for preview)
+                pageBoundingBox = scaledPageBounds
+                    .aggressiveSmooth(
+                        previous = previousPageBounds,
+                        smoothFactor = 0.3f,
+                        maxJumpThreshold = 50f
+                    )
 
-                pageBoundingBox =
-                    scaledPageBounds
-                        .aggressiveSmooth(
-                            previous = previousPageBounds,
-                            smoothFactor = 0.3f,        // 90% previous, 10% current
-                            maxJumpThreshold = 50f      // Completely reject frames with ANY corner jumping >50px
-                        )
-
-                pageBoundingBox =
-                    rocketBoundingBoxMedianFilter
-                        .add(pageBoundingBox)
-
+                pageBoundingBox = rocketBoundingBoxMedianFilter.add(pageBoundingBox)
                 previousPageBounds = pageBoundingBox
 
                 matchFound = true
 
-                Log.d(
-                    TAG,
-                    buildString {
-                        appendLine("final pageBoundingBox:")
-                        appendLine("$pageBoundingBox")
-                    }
-                )
+                Log.d(TAG, "Unscaled page bounds (ImageAnalysis space): $pageBoundingBoxUnscaled")
+                Log.d(TAG, "Scaled page bounds (Preview space): $pageBoundingBox")
             } else {
-                // Reset when we lose tracking
                 previousPageBounds = null
                 rocketBoundingBoxMedianFilter.reset()
             }
         } else {
-            // Reset when no barcode detected
             previousPageBounds = null
             rocketBoundingBoxMedianFilter.reset()
         }
@@ -142,12 +103,16 @@ class QrCodeHandler @Inject constructor(
             matchFound = matchFound,
             qrCode = qrCodeValue,
             pageTemplate = pageTemplate,
-            pageOverlayPath = pageBoundingBox?.round(),
-            qrCodeOverlayPath = qrCornerPointsBoxScaled?.round(),
+            pageOverlayPath = pageBoundingBoxUnscaled?.round(),  // UNSCALED for photo processing
+            pageOverlayPathPreview = pageBoundingBox?.round(),    // SCALED for preview drawing
+            qrCodeOverlayPath = qrCornerPointsBoxUnscaled?.round(),  // UNSCALED
+            qrCodeOverlayPathPreview = qrCornerPointsBoxScaled?.round(),  // SCALED
             validationMessage = validationMessage,
             cameraRotation = cameraRotation,
             boundingBoxRotation = boundingBoxRotation,
-            scalingFactor = scalingFactorViewport
+            scalingFactor = scalingFactorViewport,
+            sourceImageWidth = 1600,  // ImageAnalysis dimensions
+            sourceImageHeight = 1200
         )
     }
 }

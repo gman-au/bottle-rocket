@@ -1,6 +1,7 @@
 package au.com.gman.bottlerocket.scanning
 
 import android.graphics.PointF
+import android.util.Log
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
 import au.com.gman.bottlerocket.interfaces.IBarcodeDetector
@@ -16,6 +17,10 @@ class BarcodeDetector @Inject constructor(
     private val qrCodeHandler: IQrCodeHandler,
     private val screenDimensions: IScreenDimensions
 ) : IBarcodeDetector {
+
+    companion object {
+        private const val TAG = "BarcodeDetector"
+    }
 
     private val scannerOptions:
         BarcodeScannerOptions =
@@ -53,6 +58,8 @@ class BarcodeDetector @Inject constructor(
                             .rotationDegrees
                     )
 
+            Log.d(TAG, "InputImage dimensions: ${image.width}x${image.height}")  // This will likely be 1200x1600!
+
             val imageWidth =
                 mediaImage
                     .width
@@ -65,6 +72,12 @@ class BarcodeDetector @Inject constructor(
                 imageProxy
                     .imageInfo
                     .rotationDegrees
+
+            Log.d(TAG, "ImageAnalysis actual resolution: ${imageProxy.width}x${imageProxy.height}")
+
+            Log.d(TAG, "ImageProxy dimensions: ${imageProxy.width}x${imageProxy.height}")
+            Log.d(TAG, "MediaImage dimensions: ${mediaImage.width}x${mediaImage.height}")
+            Log.d(TAG, "Rotation degrees: $rotationDegrees")
 
             screenDimensions
                 .setSourceSize(
