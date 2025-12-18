@@ -6,6 +6,7 @@ import android.util.Log
 import au.com.gman.bottlerocket.domain.BarcodeDetectionResult
 import au.com.gman.bottlerocket.domain.ScaleAndOffset
 import au.com.gman.bottlerocket.extensions.applyRotation
+import au.com.gman.bottlerocket.extensions.cropToPageBounds
 import au.com.gman.bottlerocket.extensions.enhanceImage
 import au.com.gman.bottlerocket.extensions.rotate
 import au.com.gman.bottlerocket.extensions.scaleUpWithOffset
@@ -108,6 +109,10 @@ class ImageEnhancer @Inject constructor() : IImageEnhancer {
                     //finalQrOverlay,
                     //finalOverlay
 
-        return enhancedBitmap
+        val croppedBitmap =
+            enhancedBitmap
+                .cropToPageBounds(finalOverlay)
+
+        return croppedBitmap
     }
 }
