@@ -16,6 +16,8 @@ class SteadyFrameIndicator @Inject constructor() : ISteadyFrameIndicator {
 
     private var amberPercentageThreshold: Float = 0.33F
 
+    private var blocked: Boolean = false
+
     private var listener: ISteadyFrameListener? = null
 
     override fun setListener(listener: ISteadyFrameListener) {
@@ -23,6 +25,7 @@ class SteadyFrameIndicator @Inject constructor() : ISteadyFrameIndicator {
     }
 
     override fun getStatus(): CaptureStatusEnum {
+        if (blocked) return CaptureStatusEnum.PROCESSING
         if (percentageComplete > amberPercentageThreshold) return CaptureStatusEnum.CAPTURING
         if (percentageComplete <= amberPercentageThreshold) return CaptureStatusEnum.HOLD_STEADY
 
@@ -30,6 +33,7 @@ class SteadyFrameIndicator @Inject constructor() : ISteadyFrameIndicator {
     }
 
     override fun getStatusMessage(): String {
+        if (blocked) return "Please wait..."
         if (percentageComplete > amberPercentageThreshold) return "Capturing: ${(percentageComplete * 100F).toInt()}%"
         if (percentageComplete <= amberPercentageThreshold) return "Hold steady"
 
@@ -46,12 +50,19 @@ class SteadyFrameIndicator @Inject constructor() : ISteadyFrameIndicator {
     }
 
     override fun increment() {
-        consecutiveFramesCount = consecutiveFramesCount + 1
-        consecutiveFramesCount = min(consecutiveFramesCount, consecutiveFramesRequired)
-        percentageComplete = consecutiveFramesCount.toFloat() / consecutiveFramesRequired.toFloat()
+        if (!blocked) {
+            consecutiveFramesCount = consecutiveFramesCount + 1
+            consecutiveFramesCount = min(consecutiveFramesCount, consecutiveFramesRequired)
+            percentageComplete =
+                consecutiveFramesCount.toFloat() / consecutiveFramesRequired.toFloat()
 
-        if (percentageComplete >= 1.0F) {
-            listener?.onSteadyResult()
+            if (percentageComplete >= 1.0F) {
+                listener?.onSteadyResult()
+            }
         }
+    }
+
+    override fun setBlocked(blocked: Boolean) {
+        this.blocked = blocked
     }
 }
