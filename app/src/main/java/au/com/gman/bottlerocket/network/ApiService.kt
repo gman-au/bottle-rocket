@@ -33,6 +33,7 @@ class ApiService @Inject constructor(
 
     companion object {
         private const val TAG = "ApiService"
+        private const val DEFAULT_TIMEOUT_SECONDS = 10L
     }
 
     override fun setListener(listener: IApiResponseListener) {
@@ -49,9 +50,9 @@ class ApiService @Inject constructor(
 
                 val okHttpClient = OkHttpClient.Builder()
                     .addInterceptor(loggingInterceptor)
-                    .connectTimeout(10, TimeUnit.SECONDS)
-                    .readTimeout(10, TimeUnit.SECONDS)
-                    .writeTimeout(10, TimeUnit.SECONDS)
+                    .connectTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .readTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .writeTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                     .build()
 
                 val retrofit = Retrofit.Builder()

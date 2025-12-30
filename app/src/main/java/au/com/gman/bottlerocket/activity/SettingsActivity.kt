@@ -95,7 +95,7 @@ class SettingsActivity : AppCompatActivity() {
             Toast
                 .makeText(
                     this,
-                    "API URL saved. Please restart the app for changes to take effect.",
+                    "API URL saved.",
                     Toast.LENGTH_LONG
                 )
                 .show()

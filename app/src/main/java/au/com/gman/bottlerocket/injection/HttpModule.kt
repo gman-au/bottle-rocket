@@ -16,6 +16,7 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object HttpModule {
+    private const val DEFAULT_TIMEOUT_SECONDS = 10L
 
     @Provides
     @Singleton
@@ -26,14 +27,13 @@ object HttpModule {
 
         return OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .writeTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .build()
     }
 
     @Provides
-    @Singleton
     fun provideRetrofit(
         okHttpClient: OkHttpClient,
         appSettings: AppSettings
@@ -46,7 +46,6 @@ object HttpModule {
     }
 
     @Provides
-    @Singleton
     fun provideRocketRetrofitApi(retrofit: Retrofit): IRetrofitApi {
         return retrofit.create(IRetrofitApi::class.java)
     }
