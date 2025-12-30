@@ -3,14 +3,16 @@ package au.com.gman.bottlerocket.activity
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import au.com.gman.bottlerocket.R
-import au.com.gman.bottlerocket.contracts.ApiResponse
 import au.com.gman.bottlerocket.contracts.ProcessCaptureResponse
+import au.com.gman.bottlerocket.interfaces.IApiResponse
 import au.com.gman.bottlerocket.interfaces.IApiResponseListener
 import au.com.gman.bottlerocket.interfaces.IApiService
 import dagger.hilt.android.AndroidEntryPoint
@@ -22,6 +24,11 @@ class PreviewActivity : AppCompatActivity() {
 
     @Inject
     lateinit var apiService: IApiService
+
+    private lateinit var imagePreview: ImageView
+    private lateinit var sendButton: ImageButton
+    private lateinit var cancelButton: ImageButton
+    private lateinit var progressBar: ProgressBar
 
     companion object {
         private const val TAG = "PreviewActivity"
@@ -35,12 +42,14 @@ class PreviewActivity : AppCompatActivity() {
 
         val imageUri = intent.getParcelableExtra<Uri>("imagePath")
 
-        val cancelButton = findViewById<ImageButton>(R.id.cancelButton)
-        val sendButton = findViewById<ImageButton>(R.id.sendButton)
-        val imagePreview = findViewById<ImageView>(R.id.previewView)
+        cancelButton = findViewById(R.id.cancelButton)
+        sendButton = findViewById(R.id.sendButton)
+        imagePreview = findViewById(R.id.previewView)
+        progressBar = findViewById(R.id.progressBar)
 
         sendButton
             .setOnClickListener {
+                setLoadingState(true)
                 Log.d(TAG, "User approved send action!")
                 imageUri?.let { uri ->
                     uploadImage(uri)
@@ -67,6 +76,7 @@ class PreviewActivity : AppCompatActivity() {
         apiService
             .setListener(object : IApiResponseListener {
                 override fun onApiProcessCaptureSuccess(response: ProcessCaptureResponse) {
+                    setLoadingState(false)
                     Toast.makeText(
                         this@PreviewActivity,
                         "Upload successful: ${response.errorMessage}",
@@ -75,7 +85,8 @@ class PreviewActivity : AppCompatActivity() {
                     Log.d(TAG, "Upload success - Code: ${response.errorCode}")
                 }
 
-                override fun onApiResponseFailure(response: ProcessCaptureResponse) {
+                override fun onApiResponseFailure(response: IApiResponse) {
+                    setLoadingState(false)
                     Toast.makeText(
                         this@PreviewActivity,
                         "Upload failed: ${response.errorMessage}",
@@ -91,30 +102,22 @@ class PreviewActivity : AppCompatActivity() {
 
     private fun uploadImage(uri: Uri) {
         lifecycleScope.launch {
-            try {
-                // Show loading state
-                setLoadingState(true)
-
-                val result =
-                    apiService
-                        .uploadCapture(
-                            uri,
-                            cacheDir,
-                            contentResolver
-                        )
-            } finally {
-                setLoadingState(false)
-            }
+            apiService
+                .uploadCapture(
+                    uri,
+                    cacheDir,
+                    contentResolver
+                )
         }
     }
 
-    private fun setLoadingState(isLoading: Boolean) {
-        findViewById<ImageButton>(R.id.sendButton).isEnabled = !isLoading
-        findViewById<ImageButton>(R.id.cancelButton).isEnabled = !isLoading
 
-        // If you have a progress bar:
-        // findViewById<ProgressBar>(R.id.progressBar).visibility =
-        //     if (isLoading) View.VISIBLE else View.GONE
+    private fun setLoadingState(isLoading: Boolean) {
+        progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+        imagePreview.isEnabled = !isLoading
+        imagePreview.setAlpha(if (isLoading) 0.5f else 1.0f)
+        cancelButton.isEnabled = !isLoading
+        sendButton.isEnabled = !isLoading
     }
 
     override fun onDestroy() {

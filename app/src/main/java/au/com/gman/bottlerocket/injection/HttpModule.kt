@@ -1,5 +1,6 @@
 package au.com.gman.bottlerocket.injection
 
+import au.com.gman.bottlerocket.data.AppSettings
 import au.com.gman.bottlerocket.interfaces.IRetrofitApi
 import dagger.Module
 import dagger.Provides
@@ -33,9 +34,12 @@ object HttpModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
+    fun provideRetrofit(
+        okHttpClient: OkHttpClient,
+        appSettings: AppSettings
+    ): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://your-api-url.com/") // TODO: Change this!
+            .baseUrl(appSettings.apiBaseUrl)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

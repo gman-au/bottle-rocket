@@ -5,6 +5,9 @@ import android.net.Uri
 import java.io.File
 
 interface IApiService {
+
+    fun testConnection(baseUrl: String)
+
     fun uploadCapture(
         imageUri: Uri,
         cacheDir: File,

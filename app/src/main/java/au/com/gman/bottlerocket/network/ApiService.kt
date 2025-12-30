@@ -1,8 +1,11 @@
 package au.com.gman.bottlerocket.network
 
+import au.com.gman.bottlerocket.contracts.ConnectionTestResponse
 import android.content.ContentResolver
 import android.net.Uri
+import android.util.Log
 import au.com.gman.bottlerocket.contracts.ProcessCaptureResponse
+import au.com.gman.bottlerocket.domain.ApiStatusCodeEnum
 import au.com.gman.bottlerocket.interfaces.IApiResponseListener
 import au.com.gman.bottlerocket.interfaces.IApiService
 import au.com.gman.bottlerocket.interfaces.IFileIo
@@ -13,8 +16,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import java.io.File
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 class ApiService @Inject constructor(
@@ -23,8 +31,78 @@ class ApiService @Inject constructor(
 ) : IApiService {
     private var listener: IApiResponseListener? = null
 
+    companion object {
+        private const val TAG = "ApiService"
+    }
+
     override fun setListener(listener: IApiResponseListener) {
         this.listener = listener
+    }
+
+    override fun testConnection(baseUrl: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Create a temporary Retrofit instance with the test URL
+                val loggingInterceptor = HttpLoggingInterceptor().apply {
+                    level = HttpLoggingInterceptor.Level.BODY
+                }
+
+                val okHttpClient = OkHttpClient.Builder()
+                    .addInterceptor(loggingInterceptor)
+                    .connectTimeout(10, TimeUnit.SECONDS)
+                    .readTimeout(10, TimeUnit.SECONDS)
+                    .writeTimeout(10, TimeUnit.SECONDS)
+                    .build()
+
+                val retrofit = Retrofit.Builder()
+                    .baseUrl(baseUrl)
+                    .client(okHttpClient)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+
+                val api = retrofit.create(IRetrofitApi::class.java)
+
+                // Make the test call
+                val httpResponse =
+                    api
+                        .apiConnectionTest()
+
+                withContext(Dispatchers.Main) {
+                    if (httpResponse.isSuccessful && httpResponse.body() != null) {
+                        val response = httpResponse.body()!!
+
+                        if (response.isSuccess()) {
+                            listener?.onApiConnectionTestSuccess(response)
+                        } else {
+                            listener?.onApiResponseFailure(response)
+                        }
+                    } else {
+                        // HTTP error - create error response
+                        val errorResponse = ConnectionTestResponse(
+                            errorCode = httpResponse.code(),
+                            errorMessage = "HTTP Error: ${httpResponse.code()} - ${httpResponse.message()}"
+                        )
+                        Log.e(
+                            TAG,
+                            "APIService HTTP error: ${httpResponse.code()} - ${httpResponse.message()}"
+                        )
+                        listener?.onApiResponseFailure(errorResponse)
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    val errorResponse = ConnectionTestResponse(
+                        errorCode = ApiStatusCodeEnum.UNKNOWN_ERROR.ordinal,
+                        errorMessage = "Unable to connect to server."
+                    )
+                    Log.e(
+                        TAG,
+                        "APIService error: ${e.message}"
+                    )
+                    listener?.onApiResponseFailure(errorResponse)
+                }
+            }
+        }
     }
 
     override fun uploadCapture(
@@ -47,11 +125,14 @@ class ApiService @Inject constructor(
                             "image/*".toMediaTypeOrNull()
                         )
 
-                val body = MultipartBody.Part.createFormData(
-                    "image",
-                    file.name,
-                    requestFile
-                )
+                val body =
+                    MultipartBody
+                        .Part
+                        .createFormData(
+                            "image",
+                            file.name,
+                            requestFile
+                        )
 
                 // Make actual API call
                 val httpResponse =
@@ -78,6 +159,10 @@ class ApiService @Inject constructor(
                             errorCode = httpResponse.code(),
                             errorMessage = "HTTP Error: ${httpResponse.code()} - ${httpResponse.message()}"
                         )
+                        Log.e(
+                            TAG,
+                            "APIService HTTP error: ${httpResponse.code()} - ${httpResponse.message()}"
+                        )
                         listener?.onApiResponseFailure(errorResponse)
                     }
                 }
@@ -86,8 +171,12 @@ class ApiService @Inject constructor(
                 // Handle exceptions
                 withContext(Dispatchers.Main) {
                     val errorResponse = ProcessCaptureResponse(
-                        errorCode = -1,
+                        errorCode = ApiStatusCodeEnum.UNKNOWN_ERROR.ordinal,
                         errorMessage = "Exception: ${e.message}"
+                    )
+                    Log.e(
+                        TAG,
+                        "APIService error: ${e.message}"
                     )
                     listener?.onApiResponseFailure(errorResponse)
                 }

@@ -1,5 +1,6 @@
 package au.com.gman.bottlerocket.interfaces
 
+import au.com.gman.bottlerocket.contracts.ConnectionTestResponse
 import au.com.gman.bottlerocket.contracts.ProcessCaptureResponse
 import okhttp3.MultipartBody
 import retrofit2.Response
@@ -13,4 +14,8 @@ interface IRetrofitApi {
     suspend fun apiCaptureProcess(
         @Part image: MultipartBody.Part
     ): Response<ProcessCaptureResponse>
+
+    @POST("/api/connection")
+    suspend fun apiConnectionTest()
+            : Response<ConnectionTestResponse>
 }
