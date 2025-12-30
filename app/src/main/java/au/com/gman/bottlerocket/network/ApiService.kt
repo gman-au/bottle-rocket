@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.Credentials
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -40,7 +41,7 @@ class ApiService @Inject constructor(
         this.listener = listener
     }
 
-    override fun testConnection(baseUrl: String) {
+    override fun testConnection(baseUrl: String, username: String, password: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Create a temporary Retrofit instance with the test URL
@@ -48,12 +49,28 @@ class ApiService @Inject constructor(
                     level = HttpLoggingInterceptor.Level.BODY
                 }
 
-                val okHttpClient = OkHttpClient.Builder()
-                    .addInterceptor(loggingInterceptor)
-                    .connectTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                    .readTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                    .writeTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                    .build()
+                val okHttpClient =
+                    OkHttpClient
+                        .Builder()
+                        .addInterceptor { chain ->
+                            val originalRequest = chain.request()
+
+                            // Add auth header if credentials provided
+                            val requestBuilder = if (username.isNotEmpty() && password.isNotEmpty()) {
+                                val credentials = Credentials.basic(username, password)
+                                originalRequest.newBuilder()
+                                    .header("Authorization", credentials)
+                            } else {
+                                originalRequest.newBuilder()
+                            }
+
+                            chain.proceed(requestBuilder.build())
+                        }
+                        .addInterceptor(loggingInterceptor)
+                        .connectTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                        .readTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                        .writeTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                        .build()
 
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)
@@ -61,7 +78,9 @@ class ApiService @Inject constructor(
                     .addConverterFactory(GsonConverterFactory.create())
                     .build()
 
-                val api = retrofit.create(IRetrofitApi::class.java)
+                val api =
+                    retrofit
+                        .create(IRetrofitApi::class.java)
 
                 // Make the test call
                 val httpResponse =

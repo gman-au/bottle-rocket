@@ -1,4 +1,4 @@
-package au.com.gman.bottlerocket.data
+package au.com.gman.bottlerocket.settings
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -16,6 +16,8 @@ class AppSettings @Inject constructor(
 
     companion object {
         private const val KEY_API_BASE_URL = "api_base_url"
+        private const val KEY_USERNAME = "username"
+        private const val KEY_PASSWORD = "password"
         private const val DEFAULT_BASE_URL = "http://127.0.0.1:3001/"
     }
 
@@ -25,7 +27,25 @@ class AppSettings @Inject constructor(
             prefs.edit { putString(KEY_API_BASE_URL, value) }
         }
 
+    var username: String
+        get() = prefs.getString(KEY_USERNAME, "") ?: ""
+        set(value) {
+            prefs.edit { putString(KEY_USERNAME, value) }
+        }
+
+    var password: String
+        get() = prefs.getString(KEY_PASSWORD, "") ?: ""
+        set(value) {
+            prefs.edit { putString(KEY_PASSWORD, value) }
+        }
+
     fun resetToDefault() {
         apiBaseUrl = DEFAULT_BASE_URL
+        username = ""
+        password = ""
+    }
+
+    fun hasCredentials(): Boolean {
+        return username.isNotEmpty() && password.isNotEmpty()
     }
 }

@@ -44,6 +44,50 @@
         android:layout_marginBottom="16dp"
         android:inputType="textUri" />
 
+    <TextView
+        android:id="@+id/apiServerCredentialsTitle"
+        style="@style/Theme.BottleRocket.TextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:text="@string/credentials"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/apiServerCredentialsUserHelper"
+        style="@style/Theme.BottleRocket.TextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:text="@string/user_name"
+        android:textSize="14sp" />
+
+    <EditText
+        android:id="@+id/credentialsUserInput"
+        style="@style/Theme.BottleRocket.EditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:inputType="text" />
+
+    <TextView
+        android:id="@+id/apiServerCredentialsPasswordHelper"
+        style="@style/Theme.BottleRocket.TextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:text="@string/password"
+        android:textSize="14sp" />
+
+    <EditText
+        android:id="@+id/credentialsPasswordInput"
+        style="@style/Theme.BottleRocket.EditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:inputType="textPassword" />
+
     <ProgressBar
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"

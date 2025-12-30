@@ -6,7 +6,7 @@ import java.io.File
 
 interface IApiService {
 
-    fun testConnection(baseUrl: String)
+    fun testConnection(baseUrl: String, username: String, password: String)
 
     fun uploadCapture(
         imageUri: Uri,

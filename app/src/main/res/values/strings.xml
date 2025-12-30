@@ -13,4 +13,7 @@
     <string name="save">Save</string>
     <string name="reset_to_default">Reset to default</string>
     <string name="test_connection">Test connection</string>
+    <string name="credentials">Credentials</string>
+    <string name="user_name">User name</string>
+    <string name="password">Password</string>
 </resources>

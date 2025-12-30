@@ -10,7 +10,7 @@ import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import au.com.gman.bottlerocket.R
-import au.com.gman.bottlerocket.data.AppSettings
+import au.com.gman.bottlerocket.settings.AppSettings
 import au.com.gman.bottlerocket.interfaces.IApiResponse
 import au.com.gman.bottlerocket.interfaces.IApiResponseListener
 import au.com.gman.bottlerocket.interfaces.IApiService
@@ -27,6 +27,8 @@ class SettingsActivity : AppCompatActivity() {
     lateinit var apiService: IApiService
 
     private lateinit var urlInput: EditText
+    private lateinit var usernameInput: EditText
+    private lateinit var passwordInput: EditText
     private lateinit var saveButton: Button
     private lateinit var resetButton: Button
     private lateinit var testConnectionButton: Button
@@ -48,9 +50,13 @@ class SettingsActivity : AppCompatActivity() {
         testConnectionButton = findViewById(R.id.testConnectionButton)
         cancelButton = findViewById(R.id.cancelButton)
         progressBar = findViewById(R.id.progressBar)
+        usernameInput = findViewById(R.id.credentialsUserInput)
+        passwordInput = findViewById(R.id.credentialsPasswordInput)
 
-        // Load current URL
+        // Load current settings
         urlInput.setText(appSettings.apiBaseUrl)
+        usernameInput.setText(appSettings.username)
+        passwordInput.setText(appSettings.password)
 
         cancelButton
             .setOnClickListener {
@@ -61,6 +67,18 @@ class SettingsActivity : AppCompatActivity() {
             .setOnClickListener {
                 setLoadingState(true)
 
+                val username =
+                    usernameInput
+                        .text
+                        .toString()
+                        .trim()
+
+                val password =
+                    passwordInput
+                        .text
+                        .toString()
+                        .trim()
+
                 val url =
                     urlInput
                         .text
@@ -68,40 +86,42 @@ class SettingsActivity : AppCompatActivity() {
                         .trim()
 
                 apiService
-                    .testConnection(url)
+                    .testConnection(url, username, password)
             }
 
-        saveButton.setOnClickListener {
-            var url = urlInput.text.toString().trim()
+        saveButton
+            .setOnClickListener {
+                var url =
+                    urlInput
+                        .text
+                        .toString()
+                        .trim()
 
-            // Validation
-            if (url.isEmpty()) {
-                Toast.makeText(this, "URL cannot be empty", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+                // Validation
+                if (url.isEmpty()) {
+                    Toast.makeText(this, "URL cannot be empty", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+
+                // Ensure it ends with /
+                if (!url.endsWith("/")) {
+                    url += "/"
+                }
+
+                appSettings.apiBaseUrl = url
+                appSettings.username = usernameInput.text.toString().trim()
+                appSettings.password = passwordInput.text.toString().trim()
+
+                Toast
+                    .makeText(
+                        this,
+                        "Settings saved.",
+                        Toast.LENGTH_LONG
+                    )
+                    .show()
+
+                finish()
             }
-
-            // Ensure it ends with /
-            if (!url.endsWith("/")) {
-                url += "/"
-            }
-
-            // Ensure it has a protocol
-            if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                url = "http://$url"
-            }
-
-            appSettings.apiBaseUrl = url
-
-            Toast
-                .makeText(
-                    this,
-                    "API URL saved.",
-                    Toast.LENGTH_LONG
-                )
-                .show()
-
-            finish()
-        }
 
         resetButton
             .setOnClickListener {
